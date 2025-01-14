@@ -53,20 +53,29 @@ func setConfigValue(config interface{}, section, key, value string) error {
 	v = v.Elem()
 	t := v.Type()
 
+	fieldMap := make(map[string]reflect.StructField)
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
-		if section == "" && field.Tag.Get("ini") == key {
-			return setFieldValue(v.Field(i), value)
-		} else if field.Tag.Get("ini") == section {
-			fieldValue := v.Field(i)
-			if fieldValue.Kind() == reflect.Struct {
-				return setStructValue(fieldValue, key, value)
-			}
-		} else if strings.HasPrefix(section, field.Tag.Get("ini")+".") {
-			subSection := strings.TrimPrefix(section, field.Tag.Get("ini")+".")
-			fieldValue := v.Field(i)
-			if fieldValue.Kind() == reflect.Struct {
-				return setConfigValue(fieldValue.Addr().Interface(), subSection, key, value)
+		fieldMap[field.Tag.Get("ini")] = field
+	}
+
+	if section == "" {
+		if field, ok := fieldMap[key]; ok {
+			return setFieldValue(v.FieldByName(field.Name), value)
+		}
+	} else {
+		for tag, field := range fieldMap {
+			if tag == section {
+				fieldValue := v.FieldByName(field.Name)
+				if fieldValue.Kind() == reflect.Struct {
+					return setStructValue(fieldValue, key, value)
+				}
+			} else if strings.HasPrefix(section, tag+".") {
+				subSection := strings.TrimPrefix(section, tag+".")
+				fieldValue := v.FieldByName(field.Name)
+				if fieldValue.Kind() == reflect.Struct {
+					return setConfigValue(fieldValue.Addr().Interface(), subSection, key, value)
+				}
 			}
 		}
 	}
@@ -76,12 +85,14 @@ func setConfigValue(config interface{}, section, key, value string) error {
 func setStructValue(v reflect.Value, key, value string) error {
 	t := v.Type()
 
-	numFields := t.NumField()
-	for i := 0; i < numFields; i++ {
+	fieldMap := make(map[string]reflect.StructField)
+	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
-		if field.Tag.Get("ini") == key {
-			return setFieldValue(v.Field(i), value)
-		}
+		fieldMap[field.Tag.Get("ini")] = field
+	}
+
+	if field, ok := fieldMap[key]; ok {
+		return setFieldValue(v.FieldByName(field.Name), value)
 	}
 	return fmt.Errorf("no matching field found for key: %s", key)
 }
