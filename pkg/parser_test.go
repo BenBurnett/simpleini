@@ -62,7 +62,7 @@ func TestParseINI(t *testing.T) {
 	`
 
 	config := Config{}
-	err := ParseINI(strings.NewReader(iniContent), &config)
+	err := Parse(strings.NewReader(iniContent), &config)
 	if err != nil {
 		t.Fatalf("Failed to parse INI: %v", err)
 	}
@@ -119,7 +119,7 @@ func TestParseINI_InvalidLine(t *testing.T) {
 	`
 
 	config := Config{}
-	err := ParseINI(strings.NewReader(iniContent), &config)
+	err := Parse(strings.NewReader(iniContent), &config)
 	if err == nil {
 		t.Fatal("Expected error for invalid line, got nil")
 	}
@@ -129,7 +129,7 @@ func TestParseINI_EmptyFile(t *testing.T) {
 	iniContent := ``
 
 	config := Config{}
-	err := ParseINI(strings.NewReader(iniContent), &config)
+	err := Parse(strings.NewReader(iniContent), &config)
 	if err != nil {
 		t.Fatalf("Failed to parse empty INI: %v", err)
 	}

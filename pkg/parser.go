@@ -10,8 +10,8 @@ import (
 	"strings"
 )
 
-// ParseINI parses the INI file content from an io.Reader and populates the config struct
-func ParseINI(reader io.Reader, config interface{}) error {
+// Parse parses the INI file content from an io.Reader and populates the config struct
+func Parse(reader io.Reader, config interface{}) error {
 	scanner := bufio.NewScanner(reader)
 	var currentSection string
 
