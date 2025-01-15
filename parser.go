@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"unicode"
 )
 
 // Cache for struct field mappings
@@ -67,10 +68,10 @@ func setConfigValue(config interface{}, section, key, value string) error {
 	// Traverse the struct fields to find the section
 	sectionParts := strings.Split(section, ".")
 	for _, part := range sectionParts {
-		// Find the field by tag
+		// Find the field by tag or converted name
 		field := v.FieldByNameFunc(func(name string) bool {
 			field, ok := v.Type().FieldByName(name)
-			return ok && field.Tag.Get("ini") == part
+			return ok && (field.Tag.Get("ini") == part || snakeToPascal(part) == name)
 		})
 
 		// If the field is not found, return an error
@@ -107,6 +108,7 @@ func setStructValue(v reflect.Value, key, value string) error {
 		for i := 0; i < v.Type().NumField(); i++ {
 			field := v.Type().Field(i)
 			fieldMap[field.Tag.Get("ini")] = field
+			fieldMap[snakeToPascal(field.Name)] = field
 		}
 		fieldCache[v.Type()] = fieldMap
 	}
@@ -114,7 +116,10 @@ func setStructValue(v reflect.Value, key, value string) error {
 	// Find the field by key
 	field, ok := fieldMap[key]
 	if !ok {
-		return fmt.Errorf("no matching field found for key '%s'", key)
+		field, ok = fieldMap[snakeToPascal(key)]
+		if !ok {
+			return fmt.Errorf("no matching field found for key '%s'", key)
+		}
 	}
 
 	return setFieldValue(v.FieldByName(field.Name), value)
@@ -167,4 +172,24 @@ func setFieldValue(fieldValue reflect.Value, value string) error {
 		return fmt.Errorf("invalid value for field type %s: %s", fieldValue.Kind(), value)
 	}
 	return nil
+}
+
+// snakeToPascal converts a snake_case string to PascalCase
+func snakeToPascal(s string) string {
+	var result strings.Builder
+	upperNext := true
+	for _, r := range s {
+		if r == '_' {
+			upperNext = true
+			continue
+		}
+
+		if upperNext {
+			result.WriteRune(unicode.ToUpper(r))
+			upperNext = false
+		} else {
+			result.WriteRune(r)
+		}
+	}
+	return result.String()
 }

@@ -14,6 +14,8 @@ Simple INI is a Go library for parsing INI files.
 - Support for multiple data types: int, uint, float, bool, and string
 - Handles pointers to structs and basic types
 - Supports custom types that implement the `encoding.TextUnmarshaler` interface
+- Implicit name mapping from snake_case to PascalCase
+- Ability to override implicit name mapping with struct tags
 
 ## Installation
 
@@ -26,6 +28,20 @@ go get github.com/BenBurnett/simpleini
 ## Example
 
 An example usage of Simple INI can be found in the `examples` folder. This example demonstrates how to define a struct with `ini` tags and parse an INI file into that struct.
+
+### Implicit Name Mapping
+
+By default, Simple INI maps snake_case keys in the INI file to PascalCase field names in the Go struct. For example, the key `app_name` in the INI file will map to the field `AppName` in the Go struct.
+
+### Overriding Implicit Name Mapping
+
+You can override the implicit name mapping by using struct tags. For example, if you want the key `ip_address` in the INI file to map to the field `IP` in the Go struct, you can use the following struct tag:
+
+```go
+type ServerConfig struct {
+	IP *net.IP `ini:"ip_address"`
+}
+```
 
 ## License
 

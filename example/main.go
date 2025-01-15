@@ -10,35 +10,35 @@ import (
 )
 
 type DatabaseConfig struct {
-	Host     string  `ini:"host"`
-	Port     uint    `ini:"port"`
-	Username string  `ini:"username"`
-	Password *string `ini:"password"`
-	MaxConns int     `ini:"max_conns"`
+	Host     string
+	Port     uint
+	Username string
+	Password *string
+	MaxConns int
 }
 
 type LoggingConfig struct {
-	Level string  `ini:"level"`
-	File  *string `ini:"file"`
+	Level string
+	File  *string
 }
 
 type ServerConfig struct {
-	Host     string         `ini:"host"`
-	Port     uint           `ini:"port"`
-	Username *string        `ini:"username"`
-	Password string         `ini:"password"`
-	Timeout  float64        `ini:"timeout"`
-	Enabled  *bool          `ini:"enabled"`
-	Logging  *LoggingConfig `ini:"logging"`
-	IP       *net.IP        `ini:"ip"`
+	Host     string
+	Port     uint
+	Username *string
+	Password string
+	Timeout  float64
+	Enabled  *bool
+	Logging  *LoggingConfig
+	IP       *net.IP `ini:"ip_address"` // Use a struct tag name that doesn't match the field name
 }
 
 type Config struct {
-	AppName  string         `ini:"app_name"`
-	Version  *string        `ini:"version"`
-	Server   ServerConfig   `ini:"server"`
-	Database DatabaseConfig `ini:"database"`
-	Duration CustomDuration `ini:"duration"`
+	AppName  string
+	Version  *string
+	Server   ServerConfig
+	Database DatabaseConfig
+	Duration CustomDuration
 }
 
 // CustomDuration is a custom type that implements encoding.TextUnmarshaler
