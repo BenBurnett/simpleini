@@ -41,10 +41,6 @@ func Parse(reader io.Reader, config interface{}) error {
 		}
 	}
 
-	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("error reading file: %v", err)
-	}
-
 	return nil
 }
 
