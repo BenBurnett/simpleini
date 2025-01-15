@@ -1,9 +1,11 @@
 package simpleini
 
 import (
+	"net"
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 type DatabaseConfig struct {
@@ -27,6 +29,7 @@ type ServerConfig struct {
 	Timeout  float64        `ini:"timeout"`
 	Enabled  *bool          `ini:"enabled"`
 	Logging  *LoggingConfig `ini:"logging"`
+	IP       *net.IP        `ini:"ip"`
 }
 
 type Config struct {
@@ -34,6 +37,19 @@ type Config struct {
 	Version  *string        `ini:"version"`
 	Server   ServerConfig   `ini:"server"`
 	Database DatabaseConfig `ini:"database"`
+	Duration CustomDuration `ini:"duration"`
+}
+
+// CustomDuration is a custom type that implements encoding.TextUnmarshaler
+type CustomDuration time.Duration
+
+func (d *CustomDuration) UnmarshalText(text []byte) error {
+	duration, err := time.ParseDuration(string(text))
+	if err != nil {
+		return err
+	}
+	*d = CustomDuration(duration)
+	return nil
 }
 
 func TestParse(t *testing.T) {
@@ -43,6 +59,7 @@ func TestParse(t *testing.T) {
 
 		app_name = MyApp
 		version = 1.0.0
+		duration = 1h30m
 
 		[server]
 		host = localhost
@@ -51,6 +68,7 @@ func TestParse(t *testing.T) {
 		password = secret
 		timeout = 30.5
 		enabled = true
+		ip = 192.168.1.1
 
 		[server.logging]
 		level = debug
@@ -82,6 +100,9 @@ func checkConfig(t *testing.T, config *Config) {
 	if *config.Version != "1.0.0" {
 		t.Errorf("Expected version to be '1.0.0', got '%s'", *config.Version)
 	}
+	if time.Duration(config.Duration) != time.Hour+30*time.Minute {
+		t.Errorf("Expected duration to be '1h30m', got '%s'", time.Duration(config.Duration))
+	}
 	checkServerConfig(t, &config.Server)
 	checkDatabaseConfig(t, &config.Database)
 }
@@ -112,6 +133,9 @@ func checkServerConfig(t *testing.T, server *ServerConfig) {
 	}
 	if *server.Logging.File != "/var/log/myapp.log" {
 		t.Errorf("Expected server logging file to be '/var/log/myapp.log', got '%s'", *server.Logging.File)
+	}
+	if server.IP == nil || server.IP.String() != "192.168.1.1" {
+		t.Errorf("Expected server IP to be '192.168.1.1', got '%v'", server.IP)
 	}
 }
 

@@ -14,6 +14,7 @@ Simple INI is a Go library for parsing INI files.
 - Automatic marshalling of data to and from user-defined structs
 - Support for multiple data types: int, uint, float, bool, and string
 - Handles pointers to structs and basic types
+- Supports custom types that implement the `encoding.TextUnmarshaler` interface
 
 ## Installation
 

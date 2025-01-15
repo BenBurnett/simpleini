@@ -2,6 +2,7 @@ package simpleini
 
 import (
 	"bufio"
+	"encoding"
 	"errors"
 	"fmt"
 	"io"
@@ -105,6 +106,13 @@ func setFieldValue(fieldValue reflect.Value, value string) error {
 			fieldValue.Set(reflect.New(fieldValue.Type().Elem()))
 		}
 		fieldValue = fieldValue.Elem()
+	}
+
+	if fieldValue.CanAddr() {
+		addr := fieldValue.Addr()
+		if addr.CanInterface() && addr.Type().Implements(reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()) {
+			return addr.Interface().(encoding.TextUnmarshaler).UnmarshalText([]byte(value))
+		}
 	}
 
 	var err error
