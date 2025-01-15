@@ -26,7 +26,7 @@ func Parse(reader io.Reader, config interface{}) error {
 		} else {
 			keyValue := strings.SplitN(line, "=", 2)
 			if len(keyValue) != 2 {
-				return fmt.Errorf("invalid line: %s", line)
+				return fmt.Errorf("invalid line format: %s", line)
 			}
 			key := strings.TrimSpace(keyValue[0])
 			value := strings.TrimSpace(keyValue[1])
@@ -39,7 +39,7 @@ func Parse(reader io.Reader, config interface{}) error {
 	}
 
 	if err := scanner.Err(); err != nil {
-		return err
+		return fmt.Errorf("error reading file: %v", err)
 	}
 
 	return nil
@@ -48,7 +48,7 @@ func Parse(reader io.Reader, config interface{}) error {
 func setConfigValue(config interface{}, section, key, value string) error {
 	v := reflect.ValueOf(config)
 	if v.Kind() != reflect.Ptr || v.Elem().Kind() != reflect.Struct {
-		return errors.New("config must be a pointer to a struct")
+		return errors.New("configuration must be a pointer to a struct")
 	}
 	v = v.Elem()
 	t := v.Type()
@@ -79,7 +79,7 @@ func setConfigValue(config interface{}, section, key, value string) error {
 			}
 		}
 	}
-	return fmt.Errorf("no matching field found for section: %s, key: %s", section, key)
+	return fmt.Errorf("no matching field found for section '%s' and key '%s'", section, key)
 }
 
 func setStructValue(v reflect.Value, key, value string) error {
@@ -94,7 +94,7 @@ func setStructValue(v reflect.Value, key, value string) error {
 	if field, ok := fieldMap[key]; ok {
 		return setFieldValue(v.FieldByName(field.Name), value)
 	}
-	return fmt.Errorf("no matching field found for key: %s", key)
+	return fmt.Errorf("no matching field found for key '%s'", key)
 }
 
 func setFieldValue(fieldValue reflect.Value, value string) error {
@@ -102,7 +102,7 @@ func setFieldValue(fieldValue reflect.Value, value string) error {
 	case reflect.Int:
 		intValue, err := strconv.Atoi(value)
 		if err != nil {
-			return fmt.Errorf("invalid int value: %s", value)
+			return fmt.Errorf("invalid integer value: %s", value)
 		}
 		fieldValue.SetInt(int64(intValue))
 	case reflect.Float64:
@@ -114,7 +114,7 @@ func setFieldValue(fieldValue reflect.Value, value string) error {
 	case reflect.Bool:
 		boolValue, err := strconv.ParseBool(value)
 		if err != nil {
-			return fmt.Errorf("invalid bool value: %s", value)
+			return fmt.Errorf("invalid boolean value: %s", value)
 		}
 		fieldValue.SetBool(boolValue)
 	case reflect.String:

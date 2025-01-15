@@ -1,6 +1,7 @@
 package simpleini
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -34,7 +35,7 @@ type Config struct {
 	Database DatabaseConfig `ini:"database"`
 }
 
-func TestParseINI(t *testing.T) {
+func TestParse(t *testing.T) {
 	iniContent := `
 		; This is a comment
 		# This is another comment
@@ -111,7 +112,7 @@ func TestParseINI(t *testing.T) {
 	}
 }
 
-func TestParseINI_InvalidLine(t *testing.T) {
+func TestParse_InvalidLine(t *testing.T) {
 	iniContent := `
 		[server]
 		host = localhost
@@ -125,12 +126,177 @@ func TestParseINI_InvalidLine(t *testing.T) {
 	}
 }
 
-func TestParseINI_EmptyFile(t *testing.T) {
+func TestParse_EmptyFile(t *testing.T) {
 	iniContent := ``
 
 	config := Config{}
 	err := Parse(strings.NewReader(iniContent), &config)
 	if err != nil {
 		t.Fatalf("Failed to parse empty INI: %v", err)
+	}
+}
+
+func TestParse_InvalidLineFormat(t *testing.T) {
+	iniContent := `
+		app_name MyApp
+	`
+
+	config := Config{}
+	err := Parse(strings.NewReader(iniContent), &config)
+	if err == nil || !strings.Contains(err.Error(), "invalid line format") {
+		t.Fatalf("Expected error for invalid line format, got %v", err)
+	}
+}
+
+func TestParse_InvalidIntValue(t *testing.T) {
+	iniContent := `
+		[server]
+		port = not_an_int
+	`
+
+	config := Config{}
+	err := Parse(strings.NewReader(iniContent), &config)
+	if err == nil || !strings.Contains(err.Error(), "invalid integer value") {
+		t.Fatalf("Expected error for invalid integer value, got %v", err)
+	}
+}
+
+func TestParse_InvalidFloatValue(t *testing.T) {
+	iniContent := `
+		[server]
+		timeout = not_a_float
+	`
+
+	config := Config{}
+	err := Parse(strings.NewReader(iniContent), &config)
+	if err == nil || !strings.Contains(err.Error(), "invalid float value") {
+		t.Fatalf("Expected error for invalid float value, got %v", err)
+	}
+}
+
+func TestParse_InvalidBoolValue(t *testing.T) {
+	iniContent := `
+		[server]
+		enabled = not_a_bool
+	`
+
+	config := Config{}
+	err := Parse(strings.NewReader(iniContent), &config)
+	if err == nil || !strings.Contains(err.Error(), "invalid boolean value") {
+		t.Fatalf("Expected error for invalid boolean value, got %v", err)
+	}
+}
+
+func TestParse_UnsupportedFieldType(t *testing.T) {
+	type UnsupportedConfig struct {
+		Data []string `ini:"data"`
+	}
+
+	iniContent := `
+		data = value
+	`
+
+	config := UnsupportedConfig{}
+	err := Parse(strings.NewReader(iniContent), &config)
+	if err == nil || !strings.Contains(err.Error(), "unsupported field type") {
+		t.Fatalf("Expected error for unsupported field type, got %v", err)
+	}
+}
+func TestSetConfigValue(t *testing.T) {
+	type TestConfig struct {
+		Name   string  `ini:"name"`
+		Age    int     `ini:"age"`
+		Score  float64 `ini:"score"`
+		Active bool    `ini:"active"`
+	}
+
+	config := &TestConfig{}
+	err := setConfigValue(config, "", "name", "John Doe")
+	if err != nil {
+		t.Fatalf("Failed to set name: %v", err)
+	}
+	if config.Name != "John Doe" {
+		t.Errorf("Expected name to be 'John Doe', got '%s'", config.Name)
+	}
+
+	err = setConfigValue(config, "", "age", "30")
+	if err != nil {
+		t.Fatalf("Failed to set age: %v", err)
+	}
+	if config.Age != 30 {
+		t.Errorf("Expected age to be 30, got %d", config.Age)
+	}
+
+	err = setConfigValue(config, "", "score", "95.5")
+	if err != nil {
+		t.Fatalf("Failed to set score: %v", err)
+	}
+	if config.Score != 95.5 {
+		t.Errorf("Expected score to be 95.5, got %f", config.Score)
+	}
+
+	err = setConfigValue(config, "", "active", "true")
+	if err != nil {
+		t.Fatalf("Failed to set active: %v", err)
+	}
+	if !config.Active {
+		t.Errorf("Expected active to be true, got %v", config.Active)
+	}
+
+	err = setConfigValue(config, "", "unknown", "value")
+	if err == nil {
+		t.Fatal("Expected error for unknown field, got nil")
+	}
+}
+
+func TestSetConfigValue_InvalidConfigType(t *testing.T) {
+	config := "invalid"
+	err := setConfigValue(config, "", "name", "John Doe")
+	if err == nil || !strings.Contains(err.Error(), "configuration must be a pointer to a struct") {
+		t.Fatalf("Expected error for invalid config type, got %v", err)
+	}
+}
+
+func TestSetStructValue_NoMatchingField(t *testing.T) {
+	type TestConfig struct {
+		Name string `ini:"name"`
+	}
+
+	config := &TestConfig{}
+	err := setStructValue(reflect.ValueOf(config).Elem(), "unknown", "value")
+	if err == nil || !strings.Contains(err.Error(), "no matching field found for key") {
+		t.Fatalf("Expected error for no matching field, got %v", err)
+	}
+}
+
+func TestSetFieldValue_InvalidIntValue(t *testing.T) {
+	var intValue int
+	err := setFieldValue(reflect.ValueOf(&intValue).Elem(), "not_an_int")
+	if err == nil || !strings.Contains(err.Error(), "invalid integer value") {
+		t.Fatalf("Expected error for invalid integer value, got %v", err)
+	}
+}
+
+func TestSetFieldValue_InvalidFloatValue(t *testing.T) {
+	var floatValue float64
+	err := setFieldValue(reflect.ValueOf(&floatValue).Elem(), "not_a_float")
+	if err == nil || !strings.Contains(err.Error(), "invalid float value") {
+		t.Fatalf("Expected error for invalid float value, got %v", err)
+	}
+}
+
+func TestSetFieldValue_InvalidBoolValue(t *testing.T) {
+	var boolValue bool
+	err := setFieldValue(reflect.ValueOf(&boolValue).Elem(), "not_a_bool")
+	if err == nil || !strings.Contains(err.Error(), "invalid boolean value") {
+		t.Fatalf("Expected error for invalid boolean value, got %v", err)
+	}
+}
+
+func TestSetFieldValue_UnsupportedFieldType(t *testing.T) {
+	var unsupportedValue []string
+	err := setFieldValue(reflect.ValueOf(&unsupportedValue).Elem(), "value")
+	if err == nil || !strings.Contains(err.Error(), "unsupported field type") {
+		t.Fatalf("Expected error for unsupported field type, got %v", err)
 	}
 }
