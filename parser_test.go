@@ -8,9 +8,10 @@ import (
 
 type DatabaseConfig struct {
 	Host     string `ini:"host"`
-	Port     int    `ini:"port"`
+	Port     uint   `ini:"port"`
 	Username string `ini:"username"`
 	Password string `ini:"password"`
+	MaxConns int    `ini:"max_conns"`
 }
 
 type LoggingConfig struct {
@@ -20,7 +21,7 @@ type LoggingConfig struct {
 
 type ServerConfig struct {
 	Host     string        `ini:"host"`
-	Port     int           `ini:"port"`
+	Port     uint          `ini:"port"`
 	Username string        `ini:"username"`
 	Password string        `ini:"password"`
 	Timeout  float64       `ini:"timeout"`
@@ -60,6 +61,7 @@ func TestParse(t *testing.T) {
 		port = 5432
 		username = dbadmin
 		password = dbsecret
+		max_conns = 100
 	`
 
 	config := Config{}
@@ -110,6 +112,9 @@ func TestParse(t *testing.T) {
 	if config.Database.Password != "dbsecret" {
 		t.Errorf("Expected database password to be 'dbsecret', got '%s'", config.Database.Password)
 	}
+	if config.Database.MaxConns != 100 {
+		t.Errorf("Expected database max_conns to be 100, got %d", config.Database.MaxConns)
+	}
 }
 
 func TestParse_InvalidLine(t *testing.T) {
@@ -150,14 +155,27 @@ func TestParse_InvalidLineFormat(t *testing.T) {
 
 func TestParse_InvalidIntValue(t *testing.T) {
 	iniContent := `
-		[server]
-		port = not_an_int
+		[database]
+		max_conns = not_an_int
 	`
 
 	config := Config{}
 	err := Parse(strings.NewReader(iniContent), &config)
 	if err == nil || !strings.Contains(err.Error(), "invalid integer value") {
 		t.Fatalf("Expected error for invalid integer value, got %v", err)
+	}
+}
+
+func TestParse_InvalidUintValue(t *testing.T) {
+	iniContent := `
+		[server]
+		port = not_a_uint
+	`
+
+	config := Config{}
+	err := Parse(strings.NewReader(iniContent), &config)
+	if err == nil || !strings.Contains(err.Error(), "invalid unsigned integer value") {
+		t.Fatalf("Expected error for invalid unsigned integer value, got %v", err)
 	}
 }
 
@@ -202,10 +220,11 @@ func TestParse_UnsupportedFieldType(t *testing.T) {
 		t.Fatalf("Expected error for unsupported field type, got %v", err)
 	}
 }
+
 func TestSetConfigValue(t *testing.T) {
 	type TestConfig struct {
 		Name   string  `ini:"name"`
-		Age    int     `ini:"age"`
+		Age    uint    `ini:"age"`
 		Score  float64 `ini:"score"`
 		Active bool    `ini:"active"`
 	}
@@ -274,6 +293,14 @@ func TestSetFieldValue_InvalidIntValue(t *testing.T) {
 	err := setFieldValue(reflect.ValueOf(&intValue).Elem(), "not_an_int")
 	if err == nil || !strings.Contains(err.Error(), "invalid integer value") {
 		t.Fatalf("Expected error for invalid integer value, got %v", err)
+	}
+}
+
+func TestSetFieldValue_InvalidUintValue(t *testing.T) {
+	var uintValue uint
+	err := setFieldValue(reflect.ValueOf(&uintValue).Elem(), "not_a_uint")
+	if err == nil || !strings.Contains(err.Error(), "invalid unsigned integer value") {
+		t.Fatalf("Expected error for invalid unsigned integer value, got %v", err)
 	}
 }
 

@@ -99,14 +99,20 @@ func setStructValue(v reflect.Value, key, value string) error {
 
 func setFieldValue(fieldValue reflect.Value, value string) error {
 	switch fieldValue.Kind() {
-	case reflect.Int:
-		intValue, err := strconv.Atoi(value)
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		intValue, err := strconv.ParseInt(value, 10, fieldValue.Type().Bits())
 		if err != nil {
 			return fmt.Errorf("invalid integer value: %s", value)
 		}
-		fieldValue.SetInt(int64(intValue))
-	case reflect.Float64:
-		floatValue, err := strconv.ParseFloat(value, 64)
+		fieldValue.SetInt(intValue)
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		uintValue, err := strconv.ParseUint(value, 10, fieldValue.Type().Bits())
+		if err != nil {
+			return fmt.Errorf("invalid unsigned integer value: %s", value)
+		}
+		fieldValue.SetUint(uintValue)
+	case reflect.Float32, reflect.Float64:
+		floatValue, err := strconv.ParseFloat(value, fieldValue.Type().Bits())
 		if err != nil {
 			return fmt.Errorf("invalid float value: %s", value)
 		}
