@@ -22,14 +22,16 @@ type LoggingConfig struct {
 }
 
 type ServerConfig struct {
-	Host     string
-	Port     uint
-	Username *string
-	Password string
-	Timeout  float64
-	Enabled  *bool
-	Logging  *LoggingConfig
-	IP       *net.IP `ini:"ip_address"` // Use a struct tag name that doesn't match the field name
+	Host        string
+	Port        uint
+	Username    *string
+	Password    string
+	Timeout     float64
+	Enabled     *bool
+	Logging     *LoggingConfig
+	IP          *net.IP `ini:"ip_address"` // Use a struct tag name that doesn't match the field name
+	Description string
+	Notes       string
 }
 
 type Config struct {
@@ -54,33 +56,33 @@ func (d *CustomDuration) UnmarshalText(text []byte) error {
 
 func TestParse(t *testing.T) {
 	iniContent := `
-		; This is a comment
-		# This is another comment
+; This is a comment
+# This is another comment
 
-		app_name = MyApp
-		version = 1.0.0
-		duration = 1h30m
+app_name = MyApp
+version = 1.0.0
+duration = 1h30m
 
-		[server]
-		host = localhost
-		port = 8080
-		username = admin
-		password = secret
-		timeout = 30.5
-		enabled = true
-		ip_address = 192.168.1.1
+[server]
+host = localhost
+port = 8080
+username = admin
+password = secret
+timeout = 30.5
+enabled = true
+ip_address = 192.168.1.1
 
-		[server.logging]
-		level = debug
-		file = /var/log/myapp.log
+[server.logging]
+level = debug
+file = /var/log/myapp.log
 
-		[database]
-		host = db.local
-		port = 5432
-		username = dbadmin
-		password = dbsecret
-		max_conns = 100
-	`
+[database]
+host = db.local
+port = 5432
+username = dbadmin
+password = dbsecret
+max_conns = 100
+`
 
 	config := Config{}
 	err := Parse(strings.NewReader(iniContent), &config)
@@ -161,14 +163,14 @@ func checkDatabaseConfig(t *testing.T, database *DatabaseConfig) {
 
 func TestParse_Subsections(t *testing.T) {
 	iniContent := `
-		[server]
-		host = localhost
-		port = 8080
+[server]
+host = localhost
+port = 8080
 
-		[server.logging]
-		level = info
-		file = /var/log/server.log
-	`
+[server.logging]
+level = info
+file = /var/log/server.log
+`
 
 	config := Config{}
 	err := Parse(strings.NewReader(iniContent), &config)
@@ -192,10 +194,10 @@ func TestParse_Subsections(t *testing.T) {
 
 func TestParse_InvalidLine(t *testing.T) {
 	iniContent := `
-		[server]
-		host = localhost
-		port
-	`
+[server]
+host = localhost
+port
+`
 
 	config := Config{}
 	err := Parse(strings.NewReader(iniContent), &config)
@@ -216,8 +218,8 @@ func TestParse_EmptyFile(t *testing.T) {
 
 func TestParse_InvalidLineFormat(t *testing.T) {
 	iniContent := `
-		app_name MyApp
-	`
+app_name MyApp
+`
 
 	config := Config{}
 	err := Parse(strings.NewReader(iniContent), &config)
@@ -228,9 +230,9 @@ func TestParse_InvalidLineFormat(t *testing.T) {
 
 func TestParse_InvalidIntValue(t *testing.T) {
 	iniContent := `
-		[database]
-		max_conns = not_an_int
-	`
+[database]
+max_conns = not_an_int
+`
 
 	config := Config{}
 	err := Parse(strings.NewReader(iniContent), &config)
@@ -241,9 +243,9 @@ func TestParse_InvalidIntValue(t *testing.T) {
 
 func TestParse_InvalidUintValue(t *testing.T) {
 	iniContent := `
-		[server]
-		port = not_a_uint
-	`
+[server]
+port = not_a_uint
+`
 
 	config := Config{}
 	err := Parse(strings.NewReader(iniContent), &config)
@@ -254,9 +256,9 @@ func TestParse_InvalidUintValue(t *testing.T) {
 
 func TestParse_InvalidFloatValue(t *testing.T) {
 	iniContent := `
-		[server]
-		timeout = not_a_float
-	`
+[server]
+timeout = not_a_float
+`
 
 	config := Config{}
 	err := Parse(strings.NewReader(iniContent), &config)
@@ -267,9 +269,9 @@ func TestParse_InvalidFloatValue(t *testing.T) {
 
 func TestParse_InvalidBoolValue(t *testing.T) {
 	iniContent := `
-		[server]
-		enabled = not_a_bool
-	`
+[server]
+enabled = not_a_bool
+`
 
 	config := Config{}
 	err := Parse(strings.NewReader(iniContent), &config)
@@ -284,8 +286,8 @@ func TestParse_UnsupportedFieldType(t *testing.T) {
 	}
 
 	iniContent := `
-		data = value
-	`
+data = value
+`
 
 	config := UnsupportedConfig{}
 	err := Parse(strings.NewReader(iniContent), &config)
@@ -296,9 +298,9 @@ func TestParse_UnsupportedFieldType(t *testing.T) {
 
 func TestParse_NoMatchingSection(t *testing.T) {
 	iniContent := `
-		[unknown]
-		key = value
-	`
+[unknown]
+key = value
+`
 
 	config := Config{}
 	err := Parse(strings.NewReader(iniContent), &config)
@@ -313,9 +315,9 @@ func TestParse_FieldForSectionNotStruct(t *testing.T) {
 	}
 
 	iniContent := `
-		[server]
-		host = localhost
-	`
+[server]
+host = localhost
+`
 
 	config := InvalidConfig{}
 	err := Parse(strings.NewReader(iniContent), &config)
@@ -433,8 +435,8 @@ func TestSetFieldValue_UnsupportedFieldType(t *testing.T) {
 
 func TestParse_EmptySection(t *testing.T) {
 	iniContent := `
-		[server]
-	`
+[server]
+`
 
 	config := Config{}
 	err := Parse(strings.NewReader(iniContent), &config)
@@ -445,9 +447,9 @@ func TestParse_EmptySection(t *testing.T) {
 
 func TestParse_EmptyKey(t *testing.T) {
 	iniContent := `
-		[server]
-		host =
-	`
+[server]
+host =
+`
 
 	config := Config{}
 	err := Parse(strings.NewReader(iniContent), &config)
@@ -461,9 +463,9 @@ func TestParse_EmptyKey(t *testing.T) {
 
 func TestParse_EmptyValue(t *testing.T) {
 	iniContent := `
-		[server]
-		host = 
-	`
+[server]
+host = 
+`
 
 	config := Config{}
 	err := Parse(strings.NewReader(iniContent), &config)
@@ -477,9 +479,9 @@ func TestParse_EmptyValue(t *testing.T) {
 
 func TestParse_MissingSectionHeader(t *testing.T) {
 	iniContent := `
-		host = localhost
-		port = 8080
-	`
+host = localhost
+port = 8080
+`
 
 	config := Config{}
 	err := Parse(strings.NewReader(iniContent), &config)
@@ -490,13 +492,144 @@ func TestParse_MissingSectionHeader(t *testing.T) {
 
 func TestParse_CommentOnlyFile(t *testing.T) {
 	iniContent := `
-		; This is a comment
-		# This is another comment
-	`
+; This is a comment
+# This is another comment
+`
 
 	config := Config{}
 	err := Parse(strings.NewReader(iniContent), &config)
 	if err != nil {
 		t.Fatalf("Failed to parse comment-only INI: %v", err)
+	}
+}
+
+func TestParse_MultilineString(t *testing.T) {
+	iniContent := `
+[server]
+description = This is a
+    multiline
+    description
+`
+
+	config := Config{}
+	err := Parse(strings.NewReader(iniContent), &config)
+	if err != nil {
+		t.Fatalf("Failed to parse multiline string: %v", err)
+	}
+	expectedDescription := "This is a\nmultiline\ndescription"
+	if config.Server.Description != expectedDescription {
+		t.Errorf("Expected server description to be '%s', got '%s'", expectedDescription, config.Server.Description)
+	}
+}
+
+func TestParse_MultilineInt(t *testing.T) {
+	iniContent := `
+[database]
+max_conns = 100
+    200
+`
+
+	config := Config{}
+	err := Parse(strings.NewReader(iniContent), &config)
+	if err == nil || !strings.Contains(err.Error(), "invalid value for field type int") {
+		t.Fatalf("Expected error for multiline integer value, got %v", err)
+	}
+}
+
+func TestParse_MultilineFloat(t *testing.T) {
+	iniContent := `
+[server]
+timeout = 30.5
+    40.5
+`
+
+	config := Config{}
+	err := Parse(strings.NewReader(iniContent), &config)
+	if err == nil || !strings.Contains(err.Error(), "invalid value for field type float64") {
+		t.Fatalf("Expected error for multiline float value, got %v", err)
+	}
+}
+
+func TestParse_MultilineBool(t *testing.T) {
+	iniContent := `
+[server]
+enabled = true
+    false
+`
+
+	config := Config{}
+	err := Parse(strings.NewReader(iniContent), &config)
+	if err == nil || !strings.Contains(err.Error(), "invalid value for field type bool") {
+		t.Fatalf("Expected error for multiline boolean value, got %v", err)
+	}
+}
+
+func TestParse_MultipleMultilineStrings(t *testing.T) {
+	iniContent := `
+[server]
+description = This is a
+    multiline
+    description
+notes = These are
+    additional
+    notes
+
+[database]
+host = db.local
+port = 5432
+`
+
+	config := Config{}
+	err := Parse(strings.NewReader(iniContent), &config)
+	if err != nil {
+		t.Fatalf("Failed to parse multiple multiline strings: %v", err)
+	}
+
+	expectedDescription := "This is a\nmultiline\ndescription"
+	if config.Server.Description != expectedDescription {
+		t.Errorf("Expected server description to be '%s', got '%s'", expectedDescription, config.Server.Description)
+	}
+
+	expectedNotes := "These are\nadditional\nnotes"
+	if config.Server.Notes != expectedNotes {
+		t.Errorf("Expected server notes to be '%s', got '%s'", expectedNotes, config.Server.Notes)
+	}
+
+	if config.Database.Host != "db.local" {
+		t.Errorf("Expected database host to be 'db.local', got '%s'", config.Database.Host)
+	}
+	if config.Database.Port != 5432 {
+		t.Errorf("Expected database port to be 5432, got %d", config.Database.Port)
+	}
+}
+
+func TestParse_MultilineFollowedByError(t *testing.T) {
+	iniContent := `
+[server]
+description = This is a
+    multiline
+    description
+invalid_field = value
+`
+
+	config := Config{}
+	err := Parse(strings.NewReader(iniContent), &config)
+	if err == nil || !strings.Contains(err.Error(), "no matching field found for key 'invalid_field'") {
+		t.Fatalf("Expected error for invalid field after multiline field, got %v", err)
+	}
+}
+
+func TestParse_ErroneousMultilineFollowedByValidField(t *testing.T) {
+	iniContent := `
+[database]
+max_conns = 100
+    200
+invalid_field
+`
+
+	config := Config{}
+	err := Parse(strings.NewReader(iniContent), &config)
+	if err == nil || !strings.Contains(err.Error(), "invalid value for field type int") {
+		t.Fatalf("Expected error for multiline integer value, got %v", err)
 	}
 }

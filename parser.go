@@ -18,11 +18,29 @@ var fieldCache = make(map[reflect.Type]map[string]reflect.StructField)
 // Parse parses the INI file content from an io.Reader and populates the config struct
 func Parse(reader io.Reader, config interface{}) error {
 	scanner := bufio.NewScanner(reader)
-	var currentSection string
+	var currentSection, currentKey, currentValue string
+	var inMultiline bool
 
 	// Read the file line by line
 	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
+		line := scanner.Text()
+
+		// Check for multiline continuation
+		if strings.HasPrefix(line, "    ") || strings.HasPrefix(line, "\t") {
+			inMultiline = true
+			currentValue += "\n" + strings.TrimSpace(line)
+			continue
+		}
+
+		// Process the previous multiline value
+		if inMultiline {
+			if err := setConfigValue(config, currentSection, currentKey, currentValue); err != nil {
+				return err
+			}
+			inMultiline = false
+		}
+
+		line = strings.TrimSpace(line)
 		if len(line) == 0 || line[0] == ';' || line[0] == '#' {
 			continue
 		}
@@ -38,13 +56,20 @@ func Parse(reader io.Reader, config interface{}) error {
 
 			// Split the line into key and value
 			keyValue := strings.SplitN(line, "=", 2)
-			key := strings.TrimSpace(keyValue[0])
-			value := strings.TrimSpace(keyValue[1])
+			currentKey = strings.TrimSpace(keyValue[0])
+			currentValue = strings.TrimSpace(keyValue[1])
 
 			// Use reflection to set the value in the config struct
-			if err := setConfigValue(config, currentSection, key, value); err != nil {
+			if err := setConfigValue(config, currentSection, currentKey, currentValue); err != nil {
 				return err
 			}
+		}
+	}
+
+	// Process any remaining multiline value
+	if inMultiline {
+		if err := setConfigValue(config, currentSection, currentKey, currentValue); err != nil {
+			return err
 		}
 	}
 
