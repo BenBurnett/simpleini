@@ -51,35 +51,35 @@ func setConfigValue(config interface{}, section, key, value string) error {
 		return errors.New("configuration must be a pointer to a struct")
 	}
 	v = v.Elem()
-	t := v.Type()
-
-	fieldMap := make(map[string]reflect.StructField)
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
-		fieldMap[field.Tag.Get("ini")] = field
-	}
 
 	if section == "" {
-		if field, ok := fieldMap[key]; ok {
-			return setFieldValue(v.FieldByName(field.Name), value)
-		}
-	} else {
-		for tag, field := range fieldMap {
-			if tag == section {
-				fieldValue := v.FieldByName(field.Name)
-				if fieldValue.Kind() == reflect.Struct {
-					return setStructValue(fieldValue, key, value)
-				}
-			} else if strings.HasPrefix(section, tag+".") {
-				subSection := strings.TrimPrefix(section, tag+".")
-				fieldValue := v.FieldByName(field.Name)
-				if fieldValue.Kind() == reflect.Struct {
-					return setConfigValue(fieldValue.Addr().Interface(), subSection, key, value)
-				}
-			}
-		}
+		return setStructValue(v, key, value)
 	}
-	return fmt.Errorf("no matching field found for section '%s' and key '%s'", section, key)
+
+	sectionParts := strings.Split(section, ".")
+	for _, part := range sectionParts {
+		field := v.FieldByNameFunc(func(name string) bool {
+			if field, ok := v.Type().FieldByName(name); ok {
+				return field.Tag.Get("ini") == part
+			}
+			return false
+		})
+		if !field.IsValid() {
+			return fmt.Errorf("no matching field found for section '%s'", section)
+		}
+		if field.Kind() == reflect.Ptr {
+			if field.IsNil() {
+				field.Set(reflect.New(field.Type().Elem()))
+			}
+			field = field.Elem()
+		}
+		if field.Kind() != reflect.Struct {
+			return fmt.Errorf("field for section '%s' is not a struct", section)
+		}
+		v = field
+	}
+
+	return setStructValue(v, key, value)
 }
 
 func setStructValue(v reflect.Value, key, value string) error {
@@ -98,6 +98,13 @@ func setStructValue(v reflect.Value, key, value string) error {
 }
 
 func setFieldValue(fieldValue reflect.Value, value string) error {
+	if fieldValue.Kind() == reflect.Ptr {
+		if fieldValue.IsNil() {
+			fieldValue.Set(reflect.New(fieldValue.Type().Elem()))
+		}
+		fieldValue = fieldValue.Elem()
+	}
+
 	switch fieldValue.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		intValue, err := strconv.ParseInt(value, 10, fieldValue.Type().Bits())
