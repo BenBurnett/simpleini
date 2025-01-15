@@ -10,6 +10,9 @@ import (
 	"strings"
 )
 
+// Cache for struct field mappings
+var fieldCache = make(map[reflect.Type]map[string]reflect.StructField)
+
 // Parse parses the INI file content from an io.Reader and populates the config struct
 func Parse(reader io.Reader, config interface{}) error {
 	scanner := bufio.NewScanner(reader)
@@ -17,17 +20,17 @@ func Parse(reader io.Reader, config interface{}) error {
 
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
-		if line == "" || strings.HasPrefix(line, ";") || strings.HasPrefix(line, "#") {
+		if len(line) == 0 || line[0] == ';' || line[0] == '#' {
 			continue
 		}
 
 		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
 			currentSection = line[1 : len(line)-1]
 		} else {
-			keyValue := strings.SplitN(line, "=", 2)
-			if len(keyValue) != 2 {
+			if !strings.Contains(line, "=") {
 				return fmt.Errorf("invalid line format: %s", line)
 			}
+			keyValue := strings.SplitN(line, "=", 2)
 			key := strings.TrimSpace(keyValue[0])
 			value := strings.TrimSpace(keyValue[1])
 
@@ -59,10 +62,8 @@ func setConfigValue(config interface{}, section, key, value string) error {
 	sectionParts := strings.Split(section, ".")
 	for _, part := range sectionParts {
 		field := v.FieldByNameFunc(func(name string) bool {
-			if field, ok := v.Type().FieldByName(name); ok {
-				return field.Tag.Get("ini") == part
-			}
-			return false
+			field, ok := v.Type().FieldByName(name)
+			return ok && field.Tag.Get("ini") == part
 		})
 		if !field.IsValid() {
 			return fmt.Errorf("no matching field found for section '%s'", section)
@@ -83,18 +84,23 @@ func setConfigValue(config interface{}, section, key, value string) error {
 }
 
 func setStructValue(v reflect.Value, key, value string) error {
-	t := v.Type()
+	fieldMap, found := fieldCache[v.Type()]
 
-	fieldMap := make(map[string]reflect.StructField)
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
-		fieldMap[field.Tag.Get("ini")] = field
+	if !found {
+		fieldMap = make(map[string]reflect.StructField)
+		for i := 0; i < v.Type().NumField(); i++ {
+			field := v.Type().Field(i)
+			fieldMap[field.Tag.Get("ini")] = field
+		}
+		fieldCache[v.Type()] = fieldMap
 	}
 
-	if field, ok := fieldMap[key]; ok {
-		return setFieldValue(v.FieldByName(field.Name), value)
+	field, ok := fieldMap[key]
+	if !ok {
+		return fmt.Errorf("no matching field found for key '%s'", key)
 	}
-	return fmt.Errorf("no matching field found for key '%s'", key)
+
+	return setFieldValue(v.FieldByName(field.Name), value)
 }
 
 func setFieldValue(fieldValue reflect.Value, value string) error {
@@ -105,35 +111,32 @@ func setFieldValue(fieldValue reflect.Value, value string) error {
 		fieldValue = fieldValue.Elem()
 	}
 
+	var err error
 	switch fieldValue.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		intValue, err := strconv.ParseInt(value, 10, fieldValue.Type().Bits())
-		if err != nil {
-			return fmt.Errorf("invalid integer value: %s", value)
-		}
+		var intValue int64
+		intValue, err = strconv.ParseInt(value, 10, fieldValue.Type().Bits())
 		fieldValue.SetInt(intValue)
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		uintValue, err := strconv.ParseUint(value, 10, fieldValue.Type().Bits())
-		if err != nil {
-			return fmt.Errorf("invalid unsigned integer value: %s", value)
-		}
+		var uintValue uint64
+		uintValue, err = strconv.ParseUint(value, 10, fieldValue.Type().Bits())
 		fieldValue.SetUint(uintValue)
 	case reflect.Float32, reflect.Float64:
-		floatValue, err := strconv.ParseFloat(value, fieldValue.Type().Bits())
-		if err != nil {
-			return fmt.Errorf("invalid float value: %s", value)
-		}
+		var floatValue float64
+		floatValue, err = strconv.ParseFloat(value, fieldValue.Type().Bits())
 		fieldValue.SetFloat(floatValue)
 	case reflect.Bool:
-		boolValue, err := strconv.ParseBool(value)
-		if err != nil {
-			return fmt.Errorf("invalid boolean value: %s", value)
-		}
+		var boolValue bool
+		boolValue, err = strconv.ParseBool(value)
 		fieldValue.SetBool(boolValue)
 	case reflect.String:
 		fieldValue.SetString(value)
 	default:
 		return fmt.Errorf("unsupported field type: %s", fieldValue.Kind())
+	}
+
+	if err != nil {
+		return fmt.Errorf("invalid value for field type %s: %s", fieldValue.Kind(), value)
 	}
 	return nil
 }

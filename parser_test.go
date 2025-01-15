@@ -192,7 +192,7 @@ func TestParse_InvalidIntValue(t *testing.T) {
 
 	config := Config{}
 	err := Parse(strings.NewReader(iniContent), &config)
-	if err == nil || !strings.Contains(err.Error(), "invalid integer value") {
+	if err == nil || !strings.Contains(err.Error(), "invalid value for field type int") {
 		t.Fatalf("Expected error for invalid integer value, got %v", err)
 	}
 }
@@ -205,7 +205,7 @@ func TestParse_InvalidUintValue(t *testing.T) {
 
 	config := Config{}
 	err := Parse(strings.NewReader(iniContent), &config)
-	if err == nil || !strings.Contains(err.Error(), "invalid unsigned integer value") {
+	if err == nil || !strings.Contains(err.Error(), "invalid value for field type uint") {
 		t.Fatalf("Expected error for invalid unsigned integer value, got %v", err)
 	}
 }
@@ -218,7 +218,7 @@ func TestParse_InvalidFloatValue(t *testing.T) {
 
 	config := Config{}
 	err := Parse(strings.NewReader(iniContent), &config)
-	if err == nil || !strings.Contains(err.Error(), "invalid float value") {
+	if err == nil || !strings.Contains(err.Error(), "invalid value for field type float64") {
 		t.Fatalf("Expected error for invalid float value, got %v", err)
 	}
 }
@@ -231,7 +231,7 @@ func TestParse_InvalidBoolValue(t *testing.T) {
 
 	config := Config{}
 	err := Parse(strings.NewReader(iniContent), &config)
-	if err == nil || !strings.Contains(err.Error(), "invalid boolean value") {
+	if err == nil || !strings.Contains(err.Error(), "invalid value for field type bool") {
 		t.Fatalf("Expected error for invalid boolean value, got %v", err)
 	}
 }
@@ -352,7 +352,7 @@ func TestSetStructValue_NoMatchingField(t *testing.T) {
 func TestSetFieldValue_InvalidIntValue(t *testing.T) {
 	var intValue int
 	err := setFieldValue(reflect.ValueOf(&intValue).Elem(), "not_an_int")
-	if err == nil || !strings.Contains(err.Error(), "invalid integer value") {
+	if err == nil || !strings.Contains(err.Error(), "invalid value for field type int") {
 		t.Fatalf("Expected error for invalid integer value, got %v", err)
 	}
 }
@@ -360,7 +360,7 @@ func TestSetFieldValue_InvalidIntValue(t *testing.T) {
 func TestSetFieldValue_InvalidUintValue(t *testing.T) {
 	var uintValue uint
 	err := setFieldValue(reflect.ValueOf(&uintValue).Elem(), "not_a_uint")
-	if err == nil || !strings.Contains(err.Error(), "invalid unsigned integer value") {
+	if err == nil || !strings.Contains(err.Error(), "invalid value for field type uint") {
 		t.Fatalf("Expected error for invalid unsigned integer value, got %v", err)
 	}
 }
@@ -368,7 +368,7 @@ func TestSetFieldValue_InvalidUintValue(t *testing.T) {
 func TestSetFieldValue_InvalidFloatValue(t *testing.T) {
 	var floatValue float64
 	err := setFieldValue(reflect.ValueOf(&floatValue).Elem(), "not_a_float")
-	if err == nil || !strings.Contains(err.Error(), "invalid float value") {
+	if err == nil || !strings.Contains(err.Error(), "invalid value for field type float64") {
 		t.Fatalf("Expected error for invalid float value, got %v", err)
 	}
 }
@@ -376,7 +376,7 @@ func TestSetFieldValue_InvalidFloatValue(t *testing.T) {
 func TestSetFieldValue_InvalidBoolValue(t *testing.T) {
 	var boolValue bool
 	err := setFieldValue(reflect.ValueOf(&boolValue).Elem(), "not_a_bool")
-	if err == nil || !strings.Contains(err.Error(), "invalid boolean value") {
+	if err == nil || !strings.Contains(err.Error(), "invalid value for field type bool") {
 		t.Fatalf("Expected error for invalid boolean value, got %v", err)
 	}
 }
