@@ -331,8 +331,8 @@ app_name MyApp
 
 	config := Config{}
 	err := Parse(strings.NewReader(iniContent), &config)
-	if err == nil || !strings.Contains(err.Error(), "invalid line format") {
-		t.Fatalf("Expected error for invalid line format, got %v", err)
+	if err == nil || !strings.Contains(err.Error(), "invalid line format at line 2") {
+		t.Fatalf("Expected error for invalid line format with line number, got %v", err)
 	}
 }
 
@@ -344,8 +344,8 @@ max_conns = not_an_int
 
 	config := Config{}
 	err := Parse(strings.NewReader(iniContent), &config)
-	if err == nil || !strings.Contains(err.Error(), "invalid value for field type int") {
-		t.Fatalf("Expected error for invalid integer value, got %v", err)
+	if err == nil || !strings.Contains(err.Error(), "error at line 3: invalid value for field type int") {
+		t.Fatalf("Expected error for invalid integer value with line number, got %v", err)
 	}
 }
 
@@ -357,8 +357,8 @@ port = not_a_uint
 
 	config := Config{}
 	err := Parse(strings.NewReader(iniContent), &config)
-	if err == nil || !strings.Contains(err.Error(), "invalid value for field type uint") {
-		t.Fatalf("Expected error for invalid unsigned integer value, got %v", err)
+	if err == nil || !strings.Contains(err.Error(), "error at line 3: invalid value for field type uint") {
+		t.Fatalf("Expected error for invalid unsigned integer value with line number, got %v", err)
 	}
 }
 
@@ -370,8 +370,8 @@ timeout = not_a_float
 
 	config := Config{}
 	err := Parse(strings.NewReader(iniContent), &config)
-	if err == nil || !strings.Contains(err.Error(), "invalid value for field type float64") {
-		t.Fatalf("Expected error for invalid float value, got %v", err)
+	if err == nil || !strings.Contains(err.Error(), "error at line 3: invalid value for field type float64") {
+		t.Fatalf("Expected error for invalid float value with line number, got %v", err)
 	}
 }
 
@@ -383,8 +383,8 @@ enabled = not_a_bool
 
 	config := Config{}
 	err := Parse(strings.NewReader(iniContent), &config)
-	if err == nil || !strings.Contains(err.Error(), "invalid value for field type bool") {
-		t.Fatalf("Expected error for invalid boolean value, got %v", err)
+	if err == nil || !strings.Contains(err.Error(), "error at line 3: invalid value for field type bool") {
+		t.Fatalf("Expected error for invalid boolean value with line number, got %v", err)
 	}
 }
 

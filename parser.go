@@ -53,9 +53,11 @@ func ParseWithDelimiter(reader io.Reader, config interface{}, delimiter string) 
 	scanner := bufio.NewScanner(reader)
 	var currentSection, currentKey, currentValue string
 	var inMultiline bool
+	lineNumber := 0
 
 	// Read the file line by line
 	for scanner.Scan() {
+		lineNumber++
 		line := scanner.Text()
 
 		// Check for multiline continuation
@@ -69,7 +71,7 @@ func ParseWithDelimiter(reader io.Reader, config interface{}, delimiter string) 
 		if inMultiline {
 			currentValue = substituteEnvVars(currentValue)
 			if err := setConfigValue(config, currentSection, currentKey, currentValue); err != nil {
-				return err
+				return fmt.Errorf("error at line %d: %w", lineNumber, err)
 			}
 			inMultiline = false
 		}
@@ -85,7 +87,7 @@ func ParseWithDelimiter(reader io.Reader, config interface{}, delimiter string) 
 		} else {
 			// Check if the line is a key-value pair
 			if !strings.Contains(line, delimiter) {
-				return fmt.Errorf("invalid line format: %s", line)
+				return fmt.Errorf("invalid line format at line %d: %s", lineNumber, line)
 			}
 
 			// Split the line into key and value
@@ -96,7 +98,7 @@ func ParseWithDelimiter(reader io.Reader, config interface{}, delimiter string) 
 
 			// Use reflection to set the value in the config struct
 			if err := setConfigValue(config, currentSection, currentKey, currentValue); err != nil {
-				return err
+				return fmt.Errorf("error at line %d: %w", lineNumber, err)
 			}
 		}
 	}
@@ -105,7 +107,7 @@ func ParseWithDelimiter(reader io.Reader, config interface{}, delimiter string) 
 	if inMultiline {
 		currentValue = substituteEnvVars(currentValue)
 		if err := setConfigValue(config, currentSection, currentKey, currentValue); err != nil {
-			return err
+			return fmt.Errorf("error at line %d: %w", lineNumber, err)
 		}
 	}
 
