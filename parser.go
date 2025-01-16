@@ -114,20 +114,33 @@ func ParseWithDelimiter(reader io.Reader, config interface{}, delimiter string) 
 	return nil
 }
 
+// initializePointer initializes a pointer if it is nil
+func initializePointer(v reflect.Value) reflect.Value {
+	if v.Kind() == reflect.Ptr {
+		if v.IsNil() {
+			v.Set(reflect.New(v.Type().Elem()))
+		}
+		return v.Elem()
+	}
+	return v
+}
+
 // setDefaultValues sets the default values for all fields in the struct
 func setDefaultValues(v reflect.Value) error {
 	fieldMap := getFieldMap(v.Type())
 	for _, field := range fieldMap {
 		defaultValue := field.Tag.Get("default")
 		if defaultValue != "" {
-			if err := setFieldValue(v.FieldByName(field.Name), defaultValue); err != nil {
+			fieldValue := initializePointer(v.FieldByName(field.Name))
+			if err := setFieldValue(fieldValue, defaultValue); err != nil {
 				return err
 			}
 		}
 
 		// Recursively set default values for nested structs
-		if v.FieldByName(field.Name).Kind() == reflect.Struct {
-			if err := setDefaultValues(v.FieldByName(field.Name)); err != nil {
+		fieldValue := initializePointer(v.FieldByName(field.Name))
+		if fieldValue.Kind() == reflect.Struct {
+			if err := setDefaultValues(fieldValue); err != nil {
 				return err
 			}
 		}
@@ -156,7 +169,7 @@ func setConfigValue(config interface{}, section, key, value string) error {
 		// Find the field by tag or converted name
 		field := v.FieldByNameFunc(func(name string) bool {
 			field, ok := v.Type().FieldByName(name)
-			return ok && (strings.ToLower(field.Tag.Get("ini")) == part || strings.ToLower(snakeToPascal(part)) == strings.ToLower(name))
+			return ok && (strings.EqualFold(field.Tag.Get("ini"), part) || strings.EqualFold(snakeToPascal(part), name))
 		})
 
 		// If the field is not found, return an error
@@ -164,13 +177,8 @@ func setConfigValue(config interface{}, section, key, value string) error {
 			return fmt.Errorf("no matching field found for section '%s'", section)
 		}
 
-		// If the field is a pointer, initialize it
-		if field.Kind() == reflect.Ptr {
-			if field.IsNil() {
-				field.Set(reflect.New(field.Type().Elem()))
-			}
-			field = field.Elem()
-		}
+		// Initialize the pointer if necessary
+		field = initializePointer(field)
 
 		// Check if the field is a struct
 		if field.Kind() != reflect.Struct {
@@ -200,13 +208,8 @@ func setStructValue(v reflect.Value, key, value string) error {
 
 // setFieldValue sets the value of a field
 func setFieldValue(fieldValue reflect.Value, value string) error {
-	// If the field is a pointer, initialize it
-	if fieldValue.Kind() == reflect.Ptr {
-		if fieldValue.IsNil() {
-			fieldValue.Set(reflect.New(fieldValue.Type().Elem()))
-		}
-		fieldValue = fieldValue.Elem()
-	}
+	// Initialize the pointer if necessary
+	fieldValue = initializePointer(fieldValue)
 
 	// Check if the field implements encoding.TextUnmarshaler, and if so, use it
 	if fieldValue.CanAddr() {

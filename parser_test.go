@@ -63,9 +63,9 @@ func (d *CustomDuration) UnmarshalText(text []byte) error {
 
 type DefaultConfig struct {
 	Name    string  `ini:"name" default:"default_name"`
-	Age     uint    `ini:"age" default:"25"`
+	Age     *uint   `ini:"age" default:"25"`
 	Score   float64 `ini:"score" default:"75.5"`
-	Active  bool    `ini:"active" default:"true"`
+	Active  *bool   `ini:"active" default:"true"`
 	Comment string  `ini:"comment" default:"default_comment"`
 }
 
@@ -756,13 +756,13 @@ name = custom_name
 	if config.Name != "custom_name" {
 		t.Errorf("Expected name to be 'custom_name', got '%s'", config.Name)
 	}
-	if config.Age != 25 {
+	if *config.Age != 25 {
 		t.Errorf("Expected age to be 25, got %d", config.Age)
 	}
 	if config.Score != 75.5 {
 		t.Errorf("Expected score to be 75.5, got %f", config.Score)
 	}
-	if !config.Active {
+	if !*config.Active {
 		t.Errorf("Expected active to be true, got %v", config.Active)
 	}
 	if config.Comment != "default_comment" {
@@ -939,4 +939,35 @@ max_conns = 100
 	}
 
 	checkConfig(t, &config)
+}
+
+type DefaultSectionConfig struct {
+	Server *struct {
+		Host    string `ini:"host" default:"localhost"`
+		Port    uint   `ini:"port" default:"8080"`
+		Enabled *bool  `ini:"enabled" default:"true"`
+	} `ini:"server"`
+}
+
+func TestParse_DefaultValuesWithPointerSection(t *testing.T) {
+	iniContent := ``
+
+	config := DefaultSectionConfig{}
+	err := Parse(strings.NewReader(iniContent), &config)
+	if err != nil {
+		t.Fatalf("Failed to parse INI with default values in pointer section: %v", err)
+	}
+
+	if config.Server == nil {
+		t.Fatalf("Expected server section to be initialized, got nil")
+	}
+	if config.Server.Host != "localhost" {
+		t.Errorf("Expected server host to be 'localhost', got '%s'", config.Server.Host)
+	}
+	if config.Server.Port != 8080 {
+		t.Errorf("Expected server port to be 8080, got %d", config.Server.Port)
+	}
+	if config.Server.Enabled == nil || !*config.Server.Enabled {
+		t.Errorf("Expected server enabled to be true, got %v", config.Server.Enabled)
+	}
 }
