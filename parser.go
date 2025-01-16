@@ -14,18 +14,26 @@ import (
 )
 
 // getFieldMap returns the field map for the given struct type
-func getFieldMap(t reflect.Type) map[string]reflect.StructField {
-	fieldMap, found := fieldCache[t]
-	if !found {
-		fieldMap = make(map[string]reflect.StructField)
-		for i := 0; i < t.NumField(); i++ {
-			field := t.Field(i)
-			fieldMap[field.Tag.Get("ini")] = field
-			fieldMap[snakeToPascal(field.Name)] = field
-		}
-		fieldCache[t] = fieldMap
+func getFieldMap(t reflect.Type) (map[string]reflect.StructField, error) {
+	if fieldMap, found := fieldCache[t]; found {
+		return fieldMap, nil
 	}
-	return fieldMap
+
+	fieldMap := make(map[string]reflect.StructField)
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		tagName := field.Tag.Get("ini")
+		if tagName == "" {
+			tagName = snakeToPascal(field.Name)
+		}
+
+		if _, exists := fieldMap[tagName]; exists {
+			return nil, fmt.Errorf("duplicate tag name '%s' in struct %s", tagName, t.Name())
+		}
+		fieldMap[tagName] = field
+	}
+	fieldCache[t] = fieldMap
+	return fieldMap, nil
 }
 
 // Cache for struct field mappings
@@ -127,7 +135,11 @@ func initializePointer(v reflect.Value) reflect.Value {
 
 // setDefaultValues sets the default values for all fields in the struct
 func setDefaultValues(v reflect.Value) error {
-	fieldMap := getFieldMap(v.Type())
+	fieldMap, err := getFieldMap(v.Type())
+	if err != nil {
+		return err
+	}
+
 	for _, field := range fieldMap {
 		defaultValue := field.Tag.Get("default")
 		if defaultValue != "" {
@@ -192,7 +204,10 @@ func setConfigValue(config interface{}, section, key, value string) error {
 
 // setStructValue sets the value of a field in the struct
 func setStructValue(v reflect.Value, key, value string) error {
-	fieldMap := getFieldMap(v.Type())
+	fieldMap, err := getFieldMap(v.Type())
+	if err != nil {
+		return err
+	}
 
 	// Find the field by key
 	field, ok := fieldMap[key]

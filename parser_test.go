@@ -1129,3 +1129,37 @@ ips = 192.168.1.1
 		t.Fatalf("Expected error for invalid IP value in slice, got %v", err)
 	}
 }
+
+type DuplicateTagConfig struct {
+	Field1 string `ini:"duplicate"`
+	Field2 string `ini:"duplicate"`
+}
+
+type DuplicateNameConfig struct {
+	Field1 string
+	Field2 string `ini:"Field1"`
+}
+
+func TestParse_DuplicateTag(t *testing.T) {
+	iniContent := `
+duplicate = value
+`
+
+	config := DuplicateTagConfig{}
+	err := Parse(strings.NewReader(iniContent), &config)
+	if err == nil || !strings.Contains(err.Error(), "duplicate tag name 'duplicate'") {
+		t.Fatalf("Expected error for duplicate tag name, got %v", err)
+	}
+}
+
+func TestParse_DuplicateName(t *testing.T) {
+	iniContent := `
+field1 = value
+`
+
+	config := DuplicateNameConfig{}
+	err := Parse(strings.NewReader(iniContent), &config)
+	if err == nil || !strings.Contains(err.Error(), "duplicate tag name 'Field1'") {
+		t.Fatalf("Expected error for duplicate field name, got %v", err)
+	}
+}
