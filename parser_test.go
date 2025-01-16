@@ -142,6 +142,45 @@ max_conns = 100
 	checkConfig(t, &config)
 }
 
+func TestParse_CustomDelimiter(t *testing.T) {
+	iniContent := `
+; This is a comment
+# This is another comment
+
+app_name: MyApp
+version: 1.0.0
+duration: 1h30m
+
+[server]
+host: localhost
+port: 8080
+username: admin
+password: secret
+timeout: 30.5
+enabled: true
+ip_address: 192.168.1.1
+
+[server.logging]
+level: debug
+file: /var/log/myapp.log
+
+[database]
+host: db.local
+port: 5432
+username: dbadmin
+password: dbsecret
+max_conns: 100
+`
+
+	config := Config{}
+	err := ParseWithDelimiter(strings.NewReader(iniContent), &config, ":")
+	if err != nil {
+		t.Fatalf("Failed to parse INI with custom delimiter: %v", err)
+	}
+
+	checkConfig(t, &config)
+}
+
 func checkConfig(t *testing.T, config *Config) {
 	t.Helper()
 

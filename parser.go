@@ -40,6 +40,11 @@ func substituteEnvVars(value string) string {
 
 // Parse parses the INI file content from an io.Reader and populates the config struct
 func Parse(reader io.Reader, config interface{}) error {
+	return ParseWithDelimiter(reader, config, "=")
+}
+
+// ParseWithDelimiter parses the INI file content from an io.Reader with a custom delimiter and populates the config struct
+func ParseWithDelimiter(reader io.Reader, config interface{}, delimiter string) error {
 	// Set default values for all fields
 	if err := setDefaultValues(reflect.ValueOf(config).Elem()); err != nil {
 		return err
@@ -79,12 +84,12 @@ func Parse(reader io.Reader, config interface{}) error {
 			currentSection = line[1 : len(line)-1]
 		} else {
 			// Check if the line is a key-value pair
-			if !strings.Contains(line, "=") {
+			if !strings.Contains(line, delimiter) {
 				return fmt.Errorf("invalid line format: %s", line)
 			}
 
 			// Split the line into key and value
-			keyValue := strings.SplitN(line, "=", 2)
+			keyValue := strings.SplitN(line, delimiter, 2)
 			currentKey = strings.TrimSpace(keyValue[0])
 			currentValue = strings.TrimSpace(keyValue[1])
 			currentValue = substituteEnvVars(currentValue)
