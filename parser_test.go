@@ -1231,3 +1231,46 @@ enabled = not_a_bool
 		}
 	}
 }
+
+func TestParse_MultipleEnvVars(t *testing.T) {
+	os.Setenv("HOST", "localhost")
+	os.Setenv("PORT", "8080")
+	os.Setenv("USERNAME", "admin")
+	os.Setenv("PASSWORD", "secret")
+	defer os.Unsetenv("HOST")
+	defer os.Unsetenv("PORT")
+	defer os.Unsetenv("USERNAME")
+	defer os.Unsetenv("PASSWORD")
+
+	iniContent := `
+[server]
+host = ${HOST}
+port = ${PORT}
+username = ${USERNAME}
+password = ${PASSWORD}
+description = Server at ${HOST}:${PORT} with user ${USERNAME}
+`
+
+	config := Config{}
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors != nil {
+		t.Fatalf("Failed to parse INI with multiple env vars: %v", errors)
+	}
+
+	if config.Server.Host != "localhost" {
+		t.Errorf("Expected server host to be 'localhost', got '%s'", config.Server.Host)
+	}
+	if config.Server.Port != 8080 {
+		t.Errorf("Expected server port to be 8080, got %d", config.Server.Port)
+	}
+	if *config.Server.Username != "admin" {
+		t.Errorf("Expected server username to be 'admin', got '%s'", *config.Server.Username)
+	}
+	if config.Server.Password != "secret" {
+		t.Errorf("Expected server password to be 'secret', got '%s'", config.Server.Password)
+	}
+	expectedDescription := "Server at localhost:8080 with user admin"
+	if config.Server.Description != expectedDescription {
+		t.Errorf("Expected server description to be '%s', got '%s'", expectedDescription, config.Server.Description)
+	}
+}
