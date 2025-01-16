@@ -81,7 +81,7 @@ func ParseWithDelimiter(reader io.Reader, config interface{}, delimiter string) 
 
 		// Check if the line is a section header
 		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
-			currentSection = line[1 : len(line)-1]
+			currentSection = strings.ToLower(line[1 : len(line)-1])
 		} else {
 			// Check if the line is a key-value pair
 			if !strings.Contains(line, delimiter) {
@@ -90,7 +90,7 @@ func ParseWithDelimiter(reader io.Reader, config interface{}, delimiter string) 
 
 			// Split the line into key and value
 			keyValue := strings.SplitN(line, delimiter, 2)
-			currentKey = strings.TrimSpace(keyValue[0])
+			currentKey = strings.ToLower(strings.TrimSpace(keyValue[0]))
 			currentValue = strings.TrimSpace(keyValue[1])
 			currentValue = substituteEnvVars(currentValue)
 
@@ -150,10 +150,11 @@ func setConfigValue(config interface{}, section, key, value string) error {
 	// Traverse the struct fields to find the section
 	sectionParts := strings.Split(section, ".")
 	for _, part := range sectionParts {
+		part = strings.ToLower(part)
 		// Find the field by tag or converted name
 		field := v.FieldByNameFunc(func(name string) bool {
 			field, ok := v.Type().FieldByName(name)
-			return ok && (field.Tag.Get("ini") == part || snakeToPascal(part) == name)
+			return ok && (strings.ToLower(field.Tag.Get("ini")) == part || strings.ToLower(snakeToPascal(part)) == strings.ToLower(name))
 		})
 
 		// If the field is not found, return an error

@@ -840,3 +840,75 @@ host = $DB_HOST
 		t.Errorf("Expected database host to be 'env.db.local', got '%s'", config.Database.Host)
 	}
 }
+
+func TestParse_CaseInsensitiveKeys(t *testing.T) {
+	iniContent := `
+App_Name = MyApp
+VERSION = 1.0.0
+DURATION = 1h30m
+
+[SERVER]
+HOST = localhost
+PORT = 8080
+USERNAME = admin
+PASSWORD = secret
+TIMEOUT = 30.5
+ENABLED = true
+IP_ADDRESS = 192.168.1.1
+
+[SERVER.LOGGING]
+LEVEL = debug
+FILE = /var/log/myapp.log
+
+[DATABASE]
+HOST = db.local
+PORT = 5432
+USERNAME = dbadmin
+PASSWORD = dbsecret
+MAX_CONNS = 100
+`
+
+	config := Config{}
+	err := Parse(strings.NewReader(iniContent), &config)
+	if err != nil {
+		t.Fatalf("Failed to parse INI: %v", err)
+	}
+
+	checkConfig(t, &config)
+}
+
+func TestParse_CaseInsensitiveSections(t *testing.T) {
+	iniContent := `
+app_name = MyApp
+version = 1.0.0
+duration = 1h30m
+
+[Server]
+host = localhost
+port = 8080
+username = admin
+password = secret
+timeout = 30.5
+enabled = true
+ip_address = 192.168.1.1
+
+[Server.Logging]
+level = debug
+file = /var/log/myapp.log
+
+[Database]
+host = db.local
+port = 5432
+username = dbadmin
+password = dbsecret
+max_conns = 100
+`
+
+	config := Config{}
+	err := Parse(strings.NewReader(iniContent), &config)
+	if err != nil {
+		t.Fatalf("Failed to parse INI: %v", err)
+	}
+
+	checkConfig(t, &config)
+}
