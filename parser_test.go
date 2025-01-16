@@ -61,6 +61,18 @@ func (d *CustomDuration) UnmarshalText(text []byte) error {
 	return nil
 }
 
+// CustomStringSlice is a custom type that implements encoding.TextUnmarshaler
+type CustomStringSlice []string
+
+func (s *CustomStringSlice) UnmarshalText(text []byte) error {
+	*s = strings.Split(string(text), "\n")
+	return nil
+}
+
+type CustomSliceConfig struct {
+	Values CustomStringSlice `ini:"values"`
+}
+
 type DefaultConfig struct {
 	Name    string  `ini:"name" default:"default_name"`
 	Age     *uint   `ini:"age" default:"25"`
@@ -390,7 +402,7 @@ enabled = not_a_bool
 
 func TestParse_UnsupportedFieldType(t *testing.T) {
 	type UnsupportedConfig struct {
-		Data []string `ini:"data"`
+		Data map[string]string `ini:"data"`
 	}
 
 	iniContent := `
@@ -534,7 +546,7 @@ func TestSetFieldValue_InvalidBoolValue(t *testing.T) {
 }
 
 func TestSetFieldValue_UnsupportedFieldType(t *testing.T) {
-	var unsupportedValue []string
+	var unsupportedValue map[string]string
 	err := setFieldValue(reflect.ValueOf(&unsupportedValue).Elem(), "value")
 	if err == nil || !strings.Contains(err.Error(), "unsupported field type") {
 		t.Fatalf("Expected error for unsupported field type, got %v", err)
@@ -969,5 +981,151 @@ func TestParse_DefaultValuesWithPointerSection(t *testing.T) {
 	}
 	if config.Server.Enabled == nil || !*config.Server.Enabled {
 		t.Errorf("Expected server enabled to be true, got %v", config.Server.Enabled)
+	}
+}
+
+func TestParse_CustomStringSlice(t *testing.T) {
+	iniContent := `
+values = value1
+    value2
+    value3
+`
+
+	config := CustomSliceConfig{}
+	err := Parse(strings.NewReader(iniContent), &config)
+	if err != nil {
+		t.Fatalf("Failed to parse INI with custom string slice: %v", err)
+	}
+
+	expectedValues := CustomStringSlice{"value1", "value2", "value3"}
+	if !reflect.DeepEqual(config.Values, expectedValues) {
+		t.Errorf("Expected values to be '%v', got '%v'", expectedValues, config.Values)
+	}
+}
+
+type PrimitiveSliceConfig struct {
+	Ints    []int     `ini:"ints"`
+	Uints   []uint    `ini:"uints"`
+	Floats  []float64 `ini:"floats"`
+	Bools   []bool    `ini:"bools"`
+	Strings []string  `ini:"strings"`
+}
+
+func TestParse_PrimitiveSlices(t *testing.T) {
+	iniContent := `
+ints = 1
+    2
+    3
+uints = 4
+    5
+    6
+floats = 1.1
+    2.2
+    3.3
+bools = true
+    false
+    true
+strings = one
+    two
+    three
+`
+
+	config := PrimitiveSliceConfig{}
+	err := Parse(strings.NewReader(iniContent), &config)
+	if err != nil {
+		t.Fatalf("Failed to parse INI with primitive slices: %v", err)
+	}
+
+	expectedInts := []int{1, 2, 3}
+	if !reflect.DeepEqual(config.Ints, expectedInts) {
+		t.Errorf("Expected ints to be '%v', got '%v'", expectedInts, config.Ints)
+	}
+
+	expectedUints := []uint{4, 5, 6}
+	if !reflect.DeepEqual(config.Uints, expectedUints) {
+		t.Errorf("Expected uints to be '%v', got '%v'", expectedUints, config.Uints)
+	}
+
+	expectedFloats := []float64{1.1, 2.2, 3.3}
+	if !reflect.DeepEqual(config.Floats, expectedFloats) {
+		t.Errorf("Expected floats to be '%v', got '%v'", expectedFloats, config.Floats)
+	}
+
+	expectedBools := []bool{true, false, true}
+	if !reflect.DeepEqual(config.Bools, expectedBools) {
+		t.Errorf("Expected bools to be '%v', got '%v'", expectedBools, config.Bools)
+	}
+
+	expectedStrings := []string{"one", "two", "three"}
+	if !reflect.DeepEqual(config.Strings, expectedStrings) {
+		t.Errorf("Expected strings to be '%v', got '%v'", expectedStrings, config.Strings)
+	}
+}
+
+type CustomTypeSliceConfig struct {
+	IPs       []net.IP         `ini:"ips"`
+	Durations []CustomDuration `ini:"durations"`
+}
+
+func TestParse_CustomTypeSlices(t *testing.T) {
+	iniContent := `
+ips = 192.168.1.1
+    10.0.0.1
+    172.16.0.1
+durations = 1h
+    30m
+    15s
+`
+
+	config := CustomTypeSliceConfig{}
+	err := Parse(strings.NewReader(iniContent), &config)
+	if err != nil {
+		t.Fatalf("Failed to parse INI with custom type slices: %v", err)
+	}
+
+	expectedIPs := []net.IP{
+		net.ParseIP("192.168.1.1"),
+		net.ParseIP("10.0.0.1"),
+		net.ParseIP("172.16.0.1"),
+	}
+	if !reflect.DeepEqual(config.IPs, expectedIPs) {
+		t.Errorf("Expected IPs to be '%v', got '%v'", expectedIPs, config.IPs)
+	}
+
+	expectedDurations := []CustomDuration{
+		CustomDuration(time.Hour),
+		CustomDuration(30 * time.Minute),
+		CustomDuration(15 * time.Second),
+	}
+	if !reflect.DeepEqual(config.Durations, expectedDurations) {
+		t.Errorf("Expected durations to be '%v', got '%v'", expectedDurations, config.Durations)
+	}
+}
+
+func TestParse_InvalidPrimitiveSliceValues(t *testing.T) {
+	iniContent := `
+ints = 1
+    not_an_int
+    3
+`
+
+	config := PrimitiveSliceConfig{}
+	err := Parse(strings.NewReader(iniContent), &config)
+	if err == nil || !strings.Contains(err.Error(), "invalid value for field type int") {
+		t.Fatalf("Expected error for invalid integer value in slice, got %v", err)
+	}
+}
+
+func TestParse_InvalidCustomTypeSliceValues(t *testing.T) {
+	iniContent := `
+ips = 192.168.1.1
+    invalid_ip
+    172.16.0.1
+`
+
+	config := CustomTypeSliceConfig{}
+	err := Parse(strings.NewReader(iniContent), &config)
+	if err == nil || !strings.Contains(err.Error(), "invalid IP address: invalid_ip") {
+		t.Fatalf("Expected error for invalid IP value in slice, got %v", err)
 	}
 }

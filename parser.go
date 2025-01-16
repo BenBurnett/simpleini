@@ -219,6 +219,19 @@ func setFieldValue(fieldValue reflect.Value, value string) error {
 		}
 	}
 
+	// Handle slices
+	if fieldValue.Kind() == reflect.Slice {
+		lines := strings.Split(value, "\n")
+		slice := reflect.MakeSlice(fieldValue.Type(), len(lines), len(lines))
+		for i, line := range lines {
+			if err := setFieldValue(slice.Index(i), strings.TrimSpace(line)); err != nil {
+				return err
+			}
+		}
+		fieldValue.Set(slice)
+		return nil
+	}
+
 	// Convert the value to the field type
 	var err error
 	switch fieldValue.Kind() {
