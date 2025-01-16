@@ -54,6 +54,54 @@ func (d *CustomDuration) UnmarshalText(text []byte) error {
 	return nil
 }
 
+type DefaultConfig struct {
+	Name    string  `ini:"name" default:"default_name"`
+	Age     uint    `ini:"age" default:"25"`
+	Score   float64 `ini:"score" default:"75.5"`
+	Active  bool    `ini:"active" default:"true"`
+	Comment string  `ini:"comment" default:"default_comment"`
+}
+
+type InvalidDefaultIntConfig struct {
+	Age int `ini:"age" default:"invalid_int"`
+}
+
+type InvalidDefaultUintConfig struct {
+	Count uint `ini:"count" default:"invalid_uint"`
+}
+
+type InvalidDefaultFloatConfig struct {
+	Score float64 `ini:"score" default:"invalid_float"`
+}
+
+type InvalidDefaultBoolConfig struct {
+	Active bool `ini:"active" default:"invalid_bool"`
+}
+
+type InvalidDefaultIntSubConfig struct {
+	Server struct {
+		Age int `ini:"age" default:"invalid_int"`
+	} `ini:"server"`
+}
+
+type InvalidDefaultUintSubConfig struct {
+	Server struct {
+		Count uint `ini:"count" default:"invalid_uint"`
+	} `ini:"server"`
+}
+
+type InvalidDefaultFloatSubConfig struct {
+	Server struct {
+		Score float64 `ini:"score" default:"invalid_float"`
+	} `ini:"server"`
+}
+
+type InvalidDefaultBoolSubConfig struct {
+	Server struct {
+		Active bool `ini:"active" default:"invalid_bool"`
+	} `ini:"server"`
+}
+
 func TestParse(t *testing.T) {
 	iniContent := `
 ; This is a comment
@@ -631,5 +679,97 @@ invalid_field
 	err := Parse(strings.NewReader(iniContent), &config)
 	if err == nil || !strings.Contains(err.Error(), "invalid value for field type int") {
 		t.Fatalf("Expected error for multiline integer value, got %v", err)
+	}
+}
+
+func TestParse_DefaultValues(t *testing.T) {
+	iniContent := `
+name = custom_name
+`
+
+	config := DefaultConfig{}
+	err := Parse(strings.NewReader(iniContent), &config)
+	if err != nil {
+		t.Fatalf("Failed to parse INI with default values: %v", err)
+	}
+
+	if config.Name != "custom_name" {
+		t.Errorf("Expected name to be 'custom_name', got '%s'", config.Name)
+	}
+	if config.Age != 25 {
+		t.Errorf("Expected age to be 25, got %d", config.Age)
+	}
+	if config.Score != 75.5 {
+		t.Errorf("Expected score to be 75.5, got %f", config.Score)
+	}
+	if !config.Active {
+		t.Errorf("Expected active to be true, got %v", config.Active)
+	}
+	if config.Comment != "default_comment" {
+		t.Errorf("Expected comment to be 'default_comment', got '%s'", config.Comment)
+	}
+}
+
+func TestParse_InvalidDefaultIntValue(t *testing.T) {
+	config := InvalidDefaultIntConfig{}
+	err := Parse(strings.NewReader(""), &config)
+	if err == nil || !strings.Contains(err.Error(), "invalid value for field type int") {
+		t.Fatalf("Expected error for invalid default int value, got %v", err)
+	}
+}
+
+func TestParse_InvalidDefaultUintValue(t *testing.T) {
+	config := InvalidDefaultUintConfig{}
+	err := Parse(strings.NewReader(""), &config)
+	if err == nil || !strings.Contains(err.Error(), "invalid value for field type uint") {
+		t.Fatalf("Expected error for invalid default uint value, got %v", err)
+	}
+}
+
+func TestParse_InvalidDefaultFloatValue(t *testing.T) {
+	config := InvalidDefaultFloatConfig{}
+	err := Parse(strings.NewReader(""), &config)
+	if err == nil || !strings.Contains(err.Error(), "invalid value for field type float64") {
+		t.Fatalf("Expected error for invalid default float value, got %v", err)
+	}
+}
+
+func TestParse_InvalidDefaultBoolValue(t *testing.T) {
+	config := InvalidDefaultBoolConfig{}
+	err := Parse(strings.NewReader(""), &config)
+	if err == nil || !strings.Contains(err.Error(), "invalid value for field type bool") {
+		t.Fatalf("Expected error for invalid default bool value, got %v", err)
+	}
+}
+
+func TestParse_InvalidDefaultIntSubValue(t *testing.T) {
+	config := InvalidDefaultIntSubConfig{}
+	err := Parse(strings.NewReader(""), &config)
+	if err == nil || !strings.Contains(err.Error(), "invalid value for field type int") {
+		t.Fatalf("Expected error for invalid default int value in subsection, got %v", err)
+	}
+}
+
+func TestParse_InvalidDefaultUintSubValue(t *testing.T) {
+	config := InvalidDefaultUintSubConfig{}
+	err := Parse(strings.NewReader(""), &config)
+	if err == nil || !strings.Contains(err.Error(), "invalid value for field type uint") {
+		t.Fatalf("Expected error for invalid default uint value in subsection, got %v", err)
+	}
+}
+
+func TestParse_InvalidDefaultFloatSubValue(t *testing.T) {
+	config := InvalidDefaultFloatSubConfig{}
+	err := Parse(strings.NewReader(""), &config)
+	if err == nil || !strings.Contains(err.Error(), "invalid value for field type float64") {
+		t.Fatalf("Expected error for invalid default float value in subsection, got %v", err)
+	}
+}
+
+func TestParse_InvalidDefaultBoolSubValue(t *testing.T) {
+	config := InvalidDefaultBoolSubConfig{}
+	err := Parse(strings.NewReader(""), &config)
+	if err == nil || !strings.Contains(err.Error(), "invalid value for field type bool") {
+		t.Fatalf("Expected error for invalid default bool value in subsection, got %v", err)
 	}
 }

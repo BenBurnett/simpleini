@@ -12,11 +12,31 @@ import (
 	"unicode"
 )
 
+// getFieldMap returns the field map for the given struct type
+func getFieldMap(t reflect.Type) map[string]reflect.StructField {
+	fieldMap, found := fieldCache[t]
+	if !found {
+		fieldMap = make(map[string]reflect.StructField)
+		for i := 0; i < t.NumField(); i++ {
+			field := t.Field(i)
+			fieldMap[field.Tag.Get("ini")] = field
+			fieldMap[snakeToPascal(field.Name)] = field
+		}
+		fieldCache[t] = fieldMap
+	}
+	return fieldMap
+}
+
 // Cache for struct field mappings
 var fieldCache = make(map[reflect.Type]map[string]reflect.StructField)
 
 // Parse parses the INI file content from an io.Reader and populates the config struct
 func Parse(reader io.Reader, config interface{}) error {
+	// Set default values for all fields
+	if err := setDefaultValues(reflect.ValueOf(config).Elem()); err != nil {
+		return err
+	}
+
 	scanner := bufio.NewScanner(reader)
 	var currentSection, currentKey, currentValue string
 	var inMultiline bool
@@ -76,6 +96,27 @@ func Parse(reader io.Reader, config interface{}) error {
 	return nil
 }
 
+// setDefaultValues sets the default values for all fields in the struct
+func setDefaultValues(v reflect.Value) error {
+	fieldMap := getFieldMap(v.Type())
+	for _, field := range fieldMap {
+		defaultValue := field.Tag.Get("default")
+		if defaultValue != "" {
+			if err := setFieldValue(v.FieldByName(field.Name), defaultValue); err != nil {
+				return err
+			}
+		}
+
+		// Recursively set default values for nested structs
+		if v.FieldByName(field.Name).Kind() == reflect.Struct {
+			if err := setDefaultValues(v.FieldByName(field.Name)); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 // setConfigValue sets the value of a field in the config struct
 func setConfigValue(config interface{}, section, key, value string) error {
 	// Check if the config is a pointer to a struct
@@ -124,19 +165,7 @@ func setConfigValue(config interface{}, section, key, value string) error {
 
 // setStructValue sets the value of a field in the struct
 func setStructValue(v reflect.Value, key, value string) error {
-	// Get the field map for the struct type
-	fieldMap, found := fieldCache[v.Type()]
-
-	// If the field map is not found, create it
-	if !found {
-		fieldMap = make(map[string]reflect.StructField)
-		for i := 0; i < v.Type().NumField(); i++ {
-			field := v.Type().Field(i)
-			fieldMap[field.Tag.Get("ini")] = field
-			fieldMap[snakeToPascal(field.Name)] = field
-		}
-		fieldCache[v.Type()] = fieldMap
-	}
+	fieldMap := getFieldMap(v.Type())
 
 	// Find the field by key
 	field, ok := fieldMap[key]
