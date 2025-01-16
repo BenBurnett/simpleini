@@ -2,6 +2,7 @@ package simpleini
 
 import (
 	"net"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -771,5 +772,32 @@ func TestParse_InvalidDefaultBoolSubValue(t *testing.T) {
 	err := Parse(strings.NewReader(""), &config)
 	if err == nil || !strings.Contains(err.Error(), "invalid value for field type bool") {
 		t.Fatalf("Expected error for invalid default bool value in subsection, got %v", err)
+	}
+}
+
+func TestParse_EnvVarSubstitution(t *testing.T) {
+	os.Setenv("APP_NAME", "EnvApp")
+	os.Setenv("DB_HOST", "env.db.local")
+	defer os.Unsetenv("APP_NAME")
+	defer os.Unsetenv("DB_HOST")
+
+	iniContent := `
+app_name = ${APP_NAME}
+
+[database]
+host = $DB_HOST
+`
+
+	config := Config{}
+	err := Parse(strings.NewReader(iniContent), &config)
+	if err != nil {
+		t.Fatalf("Failed to parse INI with env var substitution: %v", err)
+	}
+
+	if config.AppName != "EnvApp" {
+		t.Errorf("Expected app_name to be 'EnvApp', got '%s'", config.AppName)
+	}
+	if config.Database.Host != "env.db.local" {
+		t.Errorf("Expected database host to be 'env.db.local', got '%s'", config.Database.Host)
 	}
 }

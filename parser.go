@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -29,6 +30,13 @@ func getFieldMap(t reflect.Type) map[string]reflect.StructField {
 
 // Cache for struct field mappings
 var fieldCache = make(map[reflect.Type]map[string]reflect.StructField)
+
+// substituteEnvVars replaces placeholders with environment variable values
+func substituteEnvVars(value string) string {
+	return os.Expand(value, func(key string) string {
+		return os.Getenv(key)
+	})
+}
 
 // Parse parses the INI file content from an io.Reader and populates the config struct
 func Parse(reader io.Reader, config interface{}) error {
@@ -54,6 +62,7 @@ func Parse(reader io.Reader, config interface{}) error {
 
 		// Process the previous multiline value
 		if inMultiline {
+			currentValue = substituteEnvVars(currentValue)
 			if err := setConfigValue(config, currentSection, currentKey, currentValue); err != nil {
 				return err
 			}
@@ -78,6 +87,7 @@ func Parse(reader io.Reader, config interface{}) error {
 			keyValue := strings.SplitN(line, "=", 2)
 			currentKey = strings.TrimSpace(keyValue[0])
 			currentValue = strings.TrimSpace(keyValue[1])
+			currentValue = substituteEnvVars(currentValue)
 
 			// Use reflection to set the value in the config struct
 			if err := setConfigValue(config, currentSection, currentKey, currentValue); err != nil {
@@ -88,6 +98,7 @@ func Parse(reader io.Reader, config interface{}) error {
 
 	// Process any remaining multiline value
 	if inMultiline {
+		currentValue = substituteEnvVars(currentValue)
 		if err := setConfigValue(config, currentSection, currentKey, currentValue); err != nil {
 			return err
 		}
