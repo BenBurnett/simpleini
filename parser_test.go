@@ -156,9 +156,9 @@ max_conns = 100
 `
 
 	config := Config{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err != nil {
-		t.Fatalf("Failed to parse INI: %v", err)
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors != nil {
+		t.Fatalf("Failed to parse INI: %v", errors)
 	}
 
 	checkConfig(t, &config)
@@ -199,9 +199,9 @@ max_conns: 100
 `
 
 	config := Config{}
-	err := ParseWithDelimiter(strings.NewReader(iniContent), &config, ":")
-	if err != nil {
-		t.Fatalf("Failed to parse INI with custom delimiter: %v", err)
+	errors := ParseWithDelimiter(strings.NewReader(iniContent), &config, ":")
+	if errors != nil {
+		t.Fatalf("Failed to parse INI with custom delimiter: %v", errors)
 	}
 
 	checkConfig(t, &config)
@@ -293,9 +293,9 @@ file = /var/log/server.log
 `
 
 	config := Config{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err != nil {
-		t.Fatalf("Failed to parse INI: %v", err)
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors != nil {
+		t.Fatalf("Failed to parse INI: %v", errors)
 	}
 
 	if config.Server.Host != "localhost" {
@@ -320,19 +320,25 @@ port
 `
 
 	config := Config{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err == nil {
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors == nil {
 		t.Fatal("Expected error for invalid line, got nil")
 	}
+	for _, err := range errors {
+		if strings.Contains(err.Error(), "invalid line format at line 4") {
+			return
+		}
+	}
+	t.Fatalf("Expected error for invalid line format at line 4, got %v", errors)
 }
 
 func TestParse_EmptyFile(t *testing.T) {
 	iniContent := ``
 
 	config := Config{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err != nil {
-		t.Fatalf("Failed to parse empty INI: %v", err)
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors != nil {
+		t.Fatalf("Failed to parse empty INI: %v", errors)
 	}
 }
 
@@ -342,10 +348,16 @@ app_name MyApp
 `
 
 	config := Config{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err == nil || !strings.Contains(err.Error(), "invalid line format at line 2") {
-		t.Fatalf("Expected error for invalid line format with line number, got %v", err)
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors == nil {
+		t.Fatal("Expected error for invalid line format, got nil")
 	}
+	for _, err := range errors {
+		if strings.Contains(err.Error(), "invalid line format at line 2") {
+			return
+		}
+	}
+	t.Fatalf("Expected error for invalid line format at line 2, got %v", errors)
 }
 
 func TestParse_InvalidIntValue(t *testing.T) {
@@ -355,10 +367,16 @@ max_conns = not_an_int
 `
 
 	config := Config{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err == nil || !strings.Contains(err.Error(), "error at line 3: invalid value for field type int") {
-		t.Fatalf("Expected error for invalid integer value with line number, got %v", err)
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors == nil {
+		t.Fatal("Expected error for invalid integer value, got nil")
 	}
+	for _, err := range errors {
+		if strings.Contains(err.Error(), "error at line 3: invalid value for field type int") {
+			return
+		}
+	}
+	t.Fatalf("Expected error for invalid integer value at line 3, got %v", errors)
 }
 
 func TestParse_InvalidUintValue(t *testing.T) {
@@ -368,10 +386,16 @@ port = not_a_uint
 `
 
 	config := Config{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err == nil || !strings.Contains(err.Error(), "error at line 3: invalid value for field type uint") {
-		t.Fatalf("Expected error for invalid unsigned integer value with line number, got %v", err)
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors == nil {
+		t.Fatal("Expected error for invalid unsigned integer value, got nil")
 	}
+	for _, err := range errors {
+		if strings.Contains(err.Error(), "error at line 3: invalid value for field type uint") {
+			return
+		}
+	}
+	t.Fatalf("Expected error for invalid unsigned integer value at line 3, got %v", errors)
 }
 
 func TestParse_InvalidFloatValue(t *testing.T) {
@@ -381,10 +405,16 @@ timeout = not_a_float
 `
 
 	config := Config{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err == nil || !strings.Contains(err.Error(), "error at line 3: invalid value for field type float64") {
-		t.Fatalf("Expected error for invalid float value with line number, got %v", err)
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors == nil {
+		t.Fatal("Expected error for invalid float value, got nil")
 	}
+	for _, err := range errors {
+		if strings.Contains(err.Error(), "error at line 3: invalid value for field type float64") {
+			return
+		}
+	}
+	t.Fatalf("Expected error for invalid float value at line 3, got %v", errors)
 }
 
 func TestParse_InvalidBoolValue(t *testing.T) {
@@ -394,10 +424,16 @@ enabled = not_a_bool
 `
 
 	config := Config{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err == nil || !strings.Contains(err.Error(), "error at line 3: invalid value for field type bool") {
-		t.Fatalf("Expected error for invalid boolean value with line number, got %v", err)
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors == nil {
+		t.Fatal("Expected error for invalid boolean value, got nil")
 	}
+	for _, err := range errors {
+		if strings.Contains(err.Error(), "error at line 3: invalid value for field type bool") {
+			return
+		}
+	}
+	t.Fatalf("Expected error for invalid boolean value at line 3, got %v", errors)
 }
 
 func TestParse_UnsupportedFieldType(t *testing.T) {
@@ -410,9 +446,9 @@ data = value
 `
 
 	config := UnsupportedConfig{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err == nil || !strings.Contains(err.Error(), "unsupported field type") {
-		t.Fatalf("Expected error for unsupported field type, got %v", err)
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors == nil || !strings.Contains(errors[0].Error(), "unsupported field type") {
+		t.Fatalf("Expected error for unsupported field type, got %v", errors)
 	}
 }
 
@@ -423,9 +459,9 @@ key = value
 `
 
 	config := Config{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err == nil || !strings.Contains(err.Error(), "no matching field found for section") {
-		t.Fatalf("Expected error for no matching field found for section, got %v", err)
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors == nil || !strings.Contains(errors[0].Error(), "no matching field found for section") {
+		t.Fatalf("Expected error for no matching field found for section, got %v", errors)
 	}
 }
 
@@ -440,9 +476,9 @@ host = localhost
 `
 
 	config := InvalidConfig{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err == nil || !strings.Contains(err.Error(), "field for section 'server' is not a struct") {
-		t.Fatalf("Expected error for field for section 'server' not being a struct, got %v", err)
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors == nil || !strings.Contains(errors[0].Error(), "field for section 'server' is not a struct") {
+		t.Fatalf("Expected error for field for section 'server' not being a struct, got %v", errors)
 	}
 }
 
@@ -559,9 +595,9 @@ func TestParse_EmptySection(t *testing.T) {
 `
 
 	config := Config{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err != nil {
-		t.Fatalf("Failed to parse empty section: %v", err)
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors != nil {
+		t.Fatalf("Failed to parse empty section: %v", errors)
 	}
 }
 
@@ -572,9 +608,9 @@ host =
 `
 
 	config := Config{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err != nil {
-		t.Fatalf("Failed to parse empty key: %v", err)
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors != nil {
+		t.Fatalf("Failed to parse empty key: %v", errors)
 	}
 	if config.Server.Host != "" {
 		t.Errorf("Expected server host to be empty, got '%s'", config.Server.Host)
@@ -588,9 +624,9 @@ host =
 `
 
 	config := Config{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err != nil {
-		t.Fatalf("Failed to parse empty value: %v", err)
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors != nil {
+		t.Fatalf("Failed to parse empty value: %v", errors)
 	}
 	if config.Server.Host != "" {
 		t.Errorf("Expected server host to be empty, got '%s'", config.Server.Host)
@@ -604,9 +640,9 @@ port = 8080
 `
 
 	config := Config{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err == nil || !strings.Contains(err.Error(), "no matching field found for key") {
-		t.Fatalf("Expected error for no matching field found for key, got %v", err)
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors == nil || !strings.Contains(errors[0].Error(), "no matching field found for key") {
+		t.Fatalf("Expected error for no matching field found for key, got %v", errors)
 	}
 }
 
@@ -617,9 +653,9 @@ func TestParse_CommentOnlyFile(t *testing.T) {
 `
 
 	config := Config{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err != nil {
-		t.Fatalf("Failed to parse comment-only INI: %v", err)
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors != nil {
+		t.Fatalf("Failed to parse comment-only INI: %v", errors)
 	}
 }
 
@@ -632,9 +668,9 @@ description = This is a
 `
 
 	config := Config{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err != nil {
-		t.Fatalf("Failed to parse multiline string: %v", err)
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors != nil {
+		t.Fatalf("Failed to parse multiline string: %v", errors)
 	}
 	expectedDescription := "This is a\nmultiline\ndescription"
 	if config.Server.Description != expectedDescription {
@@ -650,9 +686,9 @@ max_conns = 100
 `
 
 	config := Config{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err == nil || !strings.Contains(err.Error(), "invalid value for field type int") {
-		t.Fatalf("Expected error for multiline integer value, got %v", err)
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors == nil || !strings.Contains(errors[0].Error(), "invalid value for field type int") {
+		t.Fatalf("Expected error for multiline integer value, got %v", errors)
 	}
 }
 
@@ -664,9 +700,9 @@ timeout = 30.5
 `
 
 	config := Config{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err == nil || !strings.Contains(err.Error(), "invalid value for field type float64") {
-		t.Fatalf("Expected error for multiline float value, got %v", err)
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors == nil || !strings.Contains(errors[0].Error(), "invalid value for field type float64") {
+		t.Fatalf("Expected error for multiline float value, got %v", errors)
 	}
 }
 
@@ -678,9 +714,9 @@ enabled = true
 `
 
 	config := Config{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err == nil || !strings.Contains(err.Error(), "invalid value for field type bool") {
-		t.Fatalf("Expected error for multiline boolean value, got %v", err)
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors == nil || !strings.Contains(errors[0].Error(), "invalid value for field type bool") {
+		t.Fatalf("Expected error for multiline boolean value, got %v", errors)
 	}
 }
 
@@ -700,9 +736,9 @@ port = 5432
 `
 
 	config := Config{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err != nil {
-		t.Fatalf("Failed to parse multiple multiline strings: %v", err)
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors != nil {
+		t.Fatalf("Failed to parse multiple multiline strings: %v", errors)
 	}
 
 	expectedDescription := "This is a\nmultiline\ndescription"
@@ -733,9 +769,9 @@ invalid_field = value
 `
 
 	config := Config{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err == nil || !strings.Contains(err.Error(), "no matching field found for key 'invalid_field'") {
-		t.Fatalf("Expected error for invalid field after multiline field, got %v", err)
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors == nil || !strings.Contains(errors[0].Error(), "no matching field found for key 'invalid_field'") {
+		t.Fatalf("Expected error for invalid field after multiline field, got %v", errors)
 	}
 }
 
@@ -748,9 +784,9 @@ invalid_field
 `
 
 	config := Config{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err == nil || !strings.Contains(err.Error(), "invalid value for field type int") {
-		t.Fatalf("Expected error for multiline integer value, got %v", err)
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors == nil || !strings.Contains(errors[0].Error(), "invalid value for field type int") {
+		t.Fatalf("Expected error for multiline integer value, got %v", errors)
 	}
 }
 
@@ -760,9 +796,9 @@ name = custom_name
 `
 
 	config := DefaultConfig{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err != nil {
-		t.Fatalf("Failed to parse INI with default values: %v", err)
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors != nil {
+		t.Fatalf("Failed to parse INI with default values: %v", errors)
 	}
 
 	if config.Name != "custom_name" {
@@ -784,65 +820,65 @@ name = custom_name
 
 func TestParse_InvalidDefaultIntValue(t *testing.T) {
 	config := InvalidDefaultIntConfig{}
-	err := Parse(strings.NewReader(""), &config)
-	if err == nil || !strings.Contains(err.Error(), "invalid value for field type int") {
-		t.Fatalf("Expected error for invalid default int value, got %v", err)
+	errors := Parse(strings.NewReader(""), &config)
+	if errors == nil || !strings.Contains(errors[0].Error(), "invalid value for field type int") {
+		t.Fatalf("Expected error for invalid default int value, got %v", errors)
 	}
 }
 
 func TestParse_InvalidDefaultUintValue(t *testing.T) {
 	config := InvalidDefaultUintConfig{}
-	err := Parse(strings.NewReader(""), &config)
-	if err == nil || !strings.Contains(err.Error(), "invalid value for field type uint") {
-		t.Fatalf("Expected error for invalid default uint value, got %v", err)
+	errors := Parse(strings.NewReader(""), &config)
+	if errors == nil || !strings.Contains(errors[0].Error(), "invalid value for field type uint") {
+		t.Fatalf("Expected error for invalid default uint value, got %v", errors)
 	}
 }
 
 func TestParse_InvalidDefaultFloatValue(t *testing.T) {
 	config := InvalidDefaultFloatConfig{}
-	err := Parse(strings.NewReader(""), &config)
-	if err == nil || !strings.Contains(err.Error(), "invalid value for field type float64") {
-		t.Fatalf("Expected error for invalid default float value, got %v", err)
+	errors := Parse(strings.NewReader(""), &config)
+	if errors == nil || !strings.Contains(errors[0].Error(), "invalid value for field type float64") {
+		t.Fatalf("Expected error for invalid default float value, got %v", errors)
 	}
 }
 
 func TestParse_InvalidDefaultBoolValue(t *testing.T) {
 	config := InvalidDefaultBoolConfig{}
-	err := Parse(strings.NewReader(""), &config)
-	if err == nil || !strings.Contains(err.Error(), "invalid value for field type bool") {
-		t.Fatalf("Expected error for invalid default bool value, got %v", err)
+	errors := Parse(strings.NewReader(""), &config)
+	if errors == nil || !strings.Contains(errors[0].Error(), "invalid value for field type bool") {
+		t.Fatalf("Expected error for invalid default bool value, got %v", errors)
 	}
 }
 
 func TestParse_InvalidDefaultIntSubValue(t *testing.T) {
 	config := InvalidDefaultIntSubConfig{}
-	err := Parse(strings.NewReader(""), &config)
-	if err == nil || !strings.Contains(err.Error(), "invalid value for field type int") {
-		t.Fatalf("Expected error for invalid default int value in subsection, got %v", err)
+	errors := Parse(strings.NewReader(""), &config)
+	if errors == nil || !strings.Contains(errors[0].Error(), "invalid value for field type int") {
+		t.Fatalf("Expected error for invalid default int value in subsection, got %v", errors)
 	}
 }
 
 func TestParse_InvalidDefaultUintSubValue(t *testing.T) {
 	config := InvalidDefaultUintSubConfig{}
-	err := Parse(strings.NewReader(""), &config)
-	if err == nil || !strings.Contains(err.Error(), "invalid value for field type uint") {
-		t.Fatalf("Expected error for invalid default uint value in subsection, got %v", err)
+	errors := Parse(strings.NewReader(""), &config)
+	if errors == nil || !strings.Contains(errors[0].Error(), "invalid value for field type uint") {
+		t.Fatalf("Expected error for invalid default uint value in subsection, got %v", errors)
 	}
 }
 
 func TestParse_InvalidDefaultFloatSubValue(t *testing.T) {
 	config := InvalidDefaultFloatSubConfig{}
-	err := Parse(strings.NewReader(""), &config)
-	if err == nil || !strings.Contains(err.Error(), "invalid value for field type float64") {
-		t.Fatalf("Expected error for invalid default float value in subsection, got %v", err)
+	errors := Parse(strings.NewReader(""), &config)
+	if errors == nil || !strings.Contains(errors[0].Error(), "invalid value for field type float64") {
+		t.Fatalf("Expected error for invalid default float value in subsection, got %v", errors)
 	}
 }
 
 func TestParse_InvalidDefaultBoolSubValue(t *testing.T) {
 	config := InvalidDefaultBoolSubConfig{}
-	err := Parse(strings.NewReader(""), &config)
-	if err == nil || !strings.Contains(err.Error(), "invalid value for field type bool") {
-		t.Fatalf("Expected error for invalid default bool value in subsection, got %v", err)
+	errors := Parse(strings.NewReader(""), &config)
+	if errors == nil || !strings.Contains(errors[0].Error(), "invalid value for field type bool") {
+		t.Fatalf("Expected error for invalid default bool value in subsection, got %v", errors)
 	}
 }
 
@@ -860,9 +896,9 @@ host = $DB_HOST
 `
 
 	config := Config{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err != nil {
-		t.Fatalf("Failed to parse INI with env var substitution: %v", err)
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors != nil {
+		t.Fatalf("Failed to parse INI with env var substitution: %v", errors)
 	}
 
 	if config.AppName != "EnvApp" {
@@ -905,9 +941,9 @@ MAX_CONNS = 100
 `
 
 	config := Config{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err != nil {
-		t.Fatalf("Failed to parse INI: %v", err)
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors != nil {
+		t.Fatalf("Failed to parse INI: %v", errors)
 	}
 
 	checkConfig(t, &config)
@@ -945,9 +981,9 @@ max_conns = 100
 `
 
 	config := Config{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err != nil {
-		t.Fatalf("Failed to parse INI: %v", err)
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors != nil {
+		t.Fatalf("Failed to parse INI: %v", errors)
 	}
 
 	checkConfig(t, &config)
@@ -965,9 +1001,9 @@ func TestParse_DefaultValuesWithPointerSection(t *testing.T) {
 	iniContent := ``
 
 	config := DefaultSectionConfig{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err != nil {
-		t.Fatalf("Failed to parse INI with default values in pointer section: %v", err)
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors != nil {
+		t.Fatalf("Failed to parse INI with default values in pointer section: %v", errors)
 	}
 
 	if config.Server == nil {
@@ -992,9 +1028,9 @@ values = value1
 `
 
 	config := CustomSliceConfig{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err != nil {
-		t.Fatalf("Failed to parse INI with custom string slice: %v", err)
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors != nil {
+		t.Fatalf("Failed to parse INI with custom string slice: %v", errors)
 	}
 
 	expectedValues := CustomStringSlice{"value1", "value2", "value3"}
@@ -1031,9 +1067,9 @@ strings = one
 `
 
 	config := PrimitiveSliceConfig{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err != nil {
-		t.Fatalf("Failed to parse INI with primitive slices: %v", err)
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors != nil {
+		t.Fatalf("Failed to parse INI with primitive slices: %v", errors)
 	}
 
 	expectedInts := []int{1, 2, 3}
@@ -1078,9 +1114,9 @@ durations = 1h
 `
 
 	config := CustomTypeSliceConfig{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err != nil {
-		t.Fatalf("Failed to parse INI with custom type slices: %v", err)
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors != nil {
+		t.Fatalf("Failed to parse INI with custom type slices: %v", errors)
 	}
 
 	expectedIPs := []net.IP{
@@ -1110,9 +1146,9 @@ ints = 1
 `
 
 	config := PrimitiveSliceConfig{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err == nil || !strings.Contains(err.Error(), "invalid value for field type int") {
-		t.Fatalf("Expected error for invalid integer value in slice, got %v", err)
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors == nil || !strings.Contains(errors[0].Error(), "invalid value for field type int") {
+		t.Fatalf("Expected error for invalid integer value in slice, got %v", errors)
 	}
 }
 
@@ -1124,9 +1160,9 @@ ips = 192.168.1.1
 `
 
 	config := CustomTypeSliceConfig{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err == nil || !strings.Contains(err.Error(), "invalid IP address: invalid_ip") {
-		t.Fatalf("Expected error for invalid IP value in slice, got %v", err)
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors == nil || !strings.Contains(errors[0].Error(), "invalid IP address: invalid_ip") {
+		t.Fatalf("Expected error for invalid IP value in slice, got %v", errors)
 	}
 }
 
@@ -1146,9 +1182,9 @@ duplicate = value
 `
 
 	config := DuplicateTagConfig{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err == nil || !strings.Contains(err.Error(), "duplicate tag name 'duplicate'") {
-		t.Fatalf("Expected error for duplicate tag name, got %v", err)
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors == nil || !strings.Contains(errors[0].Error(), "duplicate tag name 'duplicate'") {
+		t.Fatalf("Expected error for duplicate tag name, got %v", errors)
 	}
 }
 
@@ -1158,8 +1194,40 @@ field1 = value
 `
 
 	config := DuplicateNameConfig{}
-	err := Parse(strings.NewReader(iniContent), &config)
-	if err == nil || !strings.Contains(err.Error(), "duplicate tag name 'Field1'") {
-		t.Fatalf("Expected error for duplicate field name, got %v", err)
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors == nil || !strings.Contains(errors[0].Error(), "duplicate tag name 'Field1'") {
+		t.Fatalf("Expected error for duplicate field name, got %v", errors)
+	}
+}
+
+func TestParse_MultipleErrors(t *testing.T) {
+	iniContent := `
+[server]
+port = not_a_uint
+timeout = not_a_float
+enabled = not_a_bool
+`
+
+	config := Config{}
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors == nil {
+		t.Fatal("Expected multiple parsing errors, got nil")
+	}
+	expectedErrors := []string{
+		"error at line 3: invalid value for field type uint",
+		"error at line 4: invalid value for field type float64",
+		"error at line 5: invalid value for field type bool",
+	}
+	for _, expectedError := range expectedErrors {
+		found := false
+		for _, err := range errors {
+			if strings.Contains(err.Error(), expectedError) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("Expected error %q, but it was not found in %v", expectedError, errors)
+		}
 	}
 }

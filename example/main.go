@@ -62,9 +62,12 @@ func main() {
 	defer file.Close()
 
 	var config Config
-	err = simpleini.Parse(file, &config)
-	if err != nil {
-		fmt.Println("Error parsing INI:", err)
+	errors := simpleini.Parse(file, &config)
+	if errors != nil {
+		fmt.Print("Error parsing INI:")
+		for _, err := range errors {
+			fmt.Printf(" %s", err)
+		}
 		return
 	}
 

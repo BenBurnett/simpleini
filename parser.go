@@ -47,15 +47,17 @@ func substituteEnvVars(value string) string {
 }
 
 // Parse parses the INI file content from an io.Reader and populates the config struct
-func Parse(reader io.Reader, config interface{}) error {
+func Parse(reader io.Reader, config interface{}) []error {
 	return ParseWithDelimiter(reader, config, "=")
 }
 
 // ParseWithDelimiter parses the INI file content from an io.Reader with a custom delimiter and populates the config struct
-func ParseWithDelimiter(reader io.Reader, config interface{}, delimiter string) error {
+func ParseWithDelimiter(reader io.Reader, config interface{}, delimiter string) []error {
+	var errors []error
+
 	// Set default values for all fields
 	if err := setDefaultValues(reflect.ValueOf(config).Elem()); err != nil {
-		return err
+		errors = append(errors, err)
 	}
 
 	scanner := bufio.NewScanner(reader)
@@ -79,7 +81,7 @@ func ParseWithDelimiter(reader io.Reader, config interface{}, delimiter string) 
 		if inMultiline {
 			currentValue = substituteEnvVars(currentValue)
 			if err := setConfigValue(config, currentSection, currentKey, currentValue); err != nil {
-				return fmt.Errorf("error at line %d: %w", lineNumber, err)
+				errors = append(errors, fmt.Errorf("error at line %d: %w", lineNumber, err))
 			}
 			inMultiline = false
 		}
@@ -95,7 +97,8 @@ func ParseWithDelimiter(reader io.Reader, config interface{}, delimiter string) 
 		} else {
 			// Check if the line is a key-value pair
 			if !strings.Contains(line, delimiter) {
-				return fmt.Errorf("invalid line format at line %d: %s", lineNumber, line)
+				errors = append(errors, fmt.Errorf("invalid line format at line %d: %s", lineNumber, line))
+				continue
 			}
 
 			// Split the line into key and value
@@ -106,7 +109,7 @@ func ParseWithDelimiter(reader io.Reader, config interface{}, delimiter string) 
 
 			// Use reflection to set the value in the config struct
 			if err := setConfigValue(config, currentSection, currentKey, currentValue); err != nil {
-				return fmt.Errorf("error at line %d: %w", lineNumber, err)
+				errors = append(errors, fmt.Errorf("error at line %d: %w", lineNumber, err))
 			}
 		}
 	}
@@ -115,8 +118,12 @@ func ParseWithDelimiter(reader io.Reader, config interface{}, delimiter string) 
 	if inMultiline {
 		currentValue = substituteEnvVars(currentValue)
 		if err := setConfigValue(config, currentSection, currentKey, currentValue); err != nil {
-			return fmt.Errorf("error at line %d: %w", lineNumber, err)
+			errors = append(errors, fmt.Errorf("error at line %d: %w", lineNumber, err))
 		}
+	}
+
+	if len(errors) > 0 {
+		return errors
 	}
 
 	return nil
