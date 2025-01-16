@@ -17,9 +17,15 @@ type DatabaseConfig struct {
 	MaxConns int
 }
 
+type FileConfig struct {
+	Path string
+	Size int
+}
+
 type LoggingConfig struct {
-	Level string
-	File  *string
+	Level      string
+	File       *string
+	FileConfig FileConfig
 }
 
 type ServerConfig struct {
@@ -125,6 +131,10 @@ ip_address = 192.168.1.1
 level = debug
 file = /var/log/myapp.log
 
+[server.logging.file_config]
+path = /var/log/myapp.log
+size = 1024
+
 [database]
 host = db.local
 port = 5432
@@ -163,6 +173,10 @@ ip_address: 192.168.1.1
 [server.logging]
 level: debug
 file: /var/log/myapp.log
+
+[server.logging.file_config]
+path: /var/log/myapp.log
+size: 1024
 
 [database]
 host: db.local
@@ -226,6 +240,12 @@ func checkServerConfig(t *testing.T, server *ServerConfig) {
 	}
 	if server.IP == nil || server.IP.String() != "192.168.1.1" {
 		t.Errorf("Expected server IP to be '192.168.1.1', got '%v'", server.IP)
+	}
+	if server.Logging.FileConfig.Path != "/var/log/myapp.log" {
+		t.Errorf("Expected server logging file path to be '/var/log/myapp.log', got '%s'", server.Logging.FileConfig.Path)
+	}
+	if server.Logging.FileConfig.Size != 1024 {
+		t.Errorf("Expected server logging file size to be 1024, got %d", server.Logging.FileConfig.Size)
 	}
 }
 
@@ -860,6 +880,10 @@ IP_ADDRESS = 192.168.1.1
 LEVEL = debug
 FILE = /var/log/myapp.log
 
+[SERVER.LOGGING.FILE_CONFIG]
+PATH = /var/log/myapp.log
+SIZE = 1024
+
 [DATABASE]
 HOST = db.local
 PORT = 5432
@@ -895,6 +919,10 @@ ip_address = 192.168.1.1
 [Server.Logging]
 level = debug
 file = /var/log/myapp.log
+
+[Server.Logging.File_Config]
+path = /var/log/myapp.log
+size = 1024
 
 [Database]
 host = db.local
