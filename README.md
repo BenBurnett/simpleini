@@ -8,6 +8,12 @@ Simple INI is a Go library for parsing INI files.
 [![Codecov](https://codecov.io/gh/BenBurnett/simpleini/branch/main/graph/badge.svg)](https://codecov.io/gh/BenBurnett/simpleini)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/BenBurnett/simpleini/blob/main/LICENSE)
 
+## ⚠️ Warning: Project in Development
+
+**This project is currently in active development and may undergo significant changes. Use at your own risk.**
+
+---
+
 ## Features
 
 - Support for sectionless blocks, section blocks, and sub-section blocks
