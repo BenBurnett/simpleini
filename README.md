@@ -124,7 +124,8 @@ type AppConfig struct {
 }
 
 var config AppConfig
-err := simpleini.ParseWithDelimiter(strings.NewReader(iniData), &config, ":")
+simpleini.SetDelimiter(":")
+err := simpleini.Parse(strings.NewReader(iniData), &config)
 if err != nil {
 	log.Fatal(err)
 }

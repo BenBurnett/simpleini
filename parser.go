@@ -19,6 +19,13 @@ import (
 // Cache for struct field mappings
 var fieldCache sync.Map
 
+var delimiter = "="
+
+// SetDelimiter sets the delimiter for key-value pairs in the INI file.
+func SetDelimiter(d string) {
+	delimiter = d
+}
+
 // getFieldMap returns the field map for the given struct type.
 // It uses a cache to avoid recomputing the field map for the same type.
 func getFieldMap(t reflect.Type) (map[string]reflect.StructField, error) {
@@ -235,7 +242,7 @@ func processMultilineValue(config interface{}, section, key, value string, lineN
 }
 
 // processLine processes a single line from the INI file.
-func processLine(line string, config interface{}, delimiter string, currentSection *string, currentKey *string, currentValue *string, inMultiline *bool, lineNumber int) error {
+func processLine(line string, config interface{}, currentSection *string, currentKey *string, currentValue *string, inMultiline *bool, lineNumber int) error {
 	// Check for multiline continuation
 	if strings.HasPrefix(line, " ") || strings.HasPrefix(line, "\t") {
 		*inMultiline = true
@@ -281,13 +288,13 @@ func processLine(line string, config interface{}, delimiter string, currentSecti
 }
 
 // handleIncludeDirective processes an include directive.
-func handleIncludeDirective(line, basePath string, config interface{}, delimiter string, includedFiles map[string]bool, depth int) ([]error, bool) {
+func handleIncludeDirective(line, basePath string, config interface{}, includedFiles map[string]bool, depth int) ([]error, bool) {
 	if strings.HasPrefix(line, "!include ") {
 		includeFile := strings.TrimSpace(line[len("!include "):])
 		if !filepath.IsAbs(includeFile) {
 			includeFile = filepath.Join(basePath, includeFile)
 		}
-		includeErrors := parseFile(includeFile, config, delimiter, includedFiles, depth)
+		includeErrors := parseFile(includeFile, config, includedFiles, depth)
 		return includeErrors, true
 	}
 	return nil, false
@@ -302,7 +309,7 @@ func ensureValidUTF8(input string) (string, error) {
 }
 
 // parseReader parses the INI content from an io.Reader with support for include directives.
-func parseReader(reader io.Reader, config interface{}, delimiter string, includedFiles map[string]bool, depth int, basePath string) []error {
+func parseReader(reader io.Reader, config interface{}, includedFiles map[string]bool, depth int, basePath string) []error {
 	var errors []error
 
 	// Set default values for all fields
@@ -328,7 +335,7 @@ func parseReader(reader io.Reader, config interface{}, delimiter string, include
 		}
 
 		// Handle include directive
-		if includeErrors, handled := handleIncludeDirective(line, basePath, config, delimiter, includedFiles, depth); handled {
+		if includeErrors, handled := handleIncludeDirective(line, basePath, config, includedFiles, depth); handled {
 			if includeErrors != nil {
 				errors = append(errors, includeErrors...)
 			}
@@ -336,7 +343,7 @@ func parseReader(reader io.Reader, config interface{}, delimiter string, include
 		}
 
 		// Process the line
-		if err := processLine(line, config, delimiter, &currentSection, &currentKey, &currentValue, &inMultiline, lineNumber); err != nil {
+		if err := processLine(line, config, &currentSection, &currentKey, &currentValue, &inMultiline, lineNumber); err != nil {
 			errors = append(errors, err)
 		}
 	}
@@ -356,7 +363,7 @@ func parseReader(reader io.Reader, config interface{}, delimiter string, include
 }
 
 // parseFile reads and parses an INI file with support for include directives.
-func parseFile(filename string, config interface{}, delimiter string, includedFiles map[string]bool, depth int) []error {
+func parseFile(filename string, config interface{}, includedFiles map[string]bool, depth int) []error {
 	if depth > 10 {
 		return []error{fmt.Errorf("maximum include depth exceeded")}
 	}
@@ -373,15 +380,10 @@ func parseFile(filename string, config interface{}, delimiter string, includedFi
 	defer file.Close()
 
 	basePath := filepath.Dir(filename)
-	return parseReader(file, config, delimiter, includedFiles, depth+1, basePath)
+	return parseReader(file, config, includedFiles, depth+1, basePath)
 }
 
 // Parse parses the INI file content from an io.Reader and populates the config struct.
 func Parse(reader io.Reader, config interface{}) []error {
-	return parseReader(reader, config, "=", make(map[string]bool), 0, "")
-}
-
-// ParseWithDelimiter parses the INI file content from an io.Reader with a custom delimiter and populates the config struct.
-func ParseWithDelimiter(reader io.Reader, config interface{}, delimiter string) []error {
-	return parseReader(reader, config, delimiter, make(map[string]bool), 0, "")
+	return parseReader(reader, config, make(map[string]bool), 0, "")
 }

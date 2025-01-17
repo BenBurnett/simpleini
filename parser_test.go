@@ -199,8 +199,10 @@ password: dbsecret
 max_conns: 100
 `
 
+	SetDelimiter(":")
+	defer SetDelimiter("=")
 	config := Config{}
-	errors := ParseWithDelimiter(strings.NewReader(iniContent), &config, ":")
+	errors := Parse(strings.NewReader(iniContent), &config)
 	if errors != nil {
 		t.Fatalf("Failed to parse INI with custom delimiter: %v", errors)
 	}
@@ -1314,7 +1316,7 @@ version = 1.0.0
 	mainIniFile.Close()
 
 	config := Config{}
-	errors := parseFile(mainIniFile.Name(), &config, "=", make(map[string]bool), 0)
+	errors := parseFile(mainIniFile.Name(), &config, make(map[string]bool), 0)
 	if errors != nil {
 		t.Fatalf("Failed to parse INI with include directive: %v", errors)
 	}
@@ -1369,7 +1371,7 @@ app_name = MyApp
 	mainIniFile.Close()
 
 	config := Config{}
-	errors := parseFile(mainIniFile.Name(), &config, "=", make(map[string]bool), 0)
+	errors := parseFile(mainIniFile.Name(), &config, make(map[string]bool), 0)
 	if errors == nil || !strings.Contains(errors[0].Error(), "circular include detected") {
 		t.Fatalf("Expected error for circular include, got %v", errors)
 	}
@@ -1394,7 +1396,7 @@ app_name = MyApp
 	mainIniFile.Close()
 
 	config := Config{}
-	errors := parseFile(mainIniFile.Name(), &config, "=", make(map[string]bool), 0)
+	errors := parseFile(mainIniFile.Name(), &config, make(map[string]bool), 0)
 	if errors == nil || !strings.Contains(errors[0].Error(), "failed to open file") {
 		t.Fatalf("Expected error for file not found, got %v", errors)
 	}
@@ -1477,7 +1479,7 @@ app_name = MyApp
 	}
 
 	config := Config{}
-	errors := parseFile(includeFileNames[0], &config, "=", make(map[string]bool), 0)
+	errors := parseFile(includeFileNames[0], &config, make(map[string]bool), 0)
 	if errors == nil || !strings.Contains(errors[0].Error(), "maximum include depth exceeded") {
 		t.Fatalf("Expected error for maximum include depth exceeded, got %v", errors)
 	}
