@@ -122,6 +122,57 @@ type InvalidDefaultBoolSubConfig struct {
 	} `ini:"server"`
 }
 
+type PromotedStruct struct {
+	Host string `ini:"host"`
+	Port uint   `ini:"port"`
+}
+
+type PromotedConfig struct {
+	PromotedStruct
+	Username string `ini:"username"`
+}
+
+type InvalidTaggedPromotedConfig struct {
+	PromotedStruct `ini:"server"`
+	Username       string `ini:"username"`
+}
+
+type DuplicateFieldPromotedConfig struct {
+	Host string `ini:"host"`
+	PromotedStruct
+}
+
+type DuplicateFieldPromotedConfigFirst struct {
+	PromotedStruct
+	Host string `ini:"host"`
+}
+
+type AnotherPromotedStruct struct {
+	Timeout float64 `ini:"timeout"`
+	Enabled *bool   `ini:"enabled"`
+}
+
+type MultiplePromotedConfig struct {
+	PromotedStruct
+	AnotherPromotedStruct
+	Username string `ini:"username"`
+}
+
+type PromotedNotFirstConfig struct {
+	Username string `ini:"username"`
+	PromotedStruct
+}
+
+type InvalidPromotedStruct struct {
+	Host string `ini:"host"`
+	Port uint   `ini:"host"`
+}
+
+type InvalidPromotedConfig struct {
+	InvalidPromotedStruct
+	Host string `ini:"host"`
+}
+
 func TestParse(t *testing.T) {
 	iniContent := `
 ; This is a comment
@@ -1543,4 +1594,142 @@ version = 1.0.0
 		}
 	}
 	t.Fatalf("Expected error for unexported fields, got %v", errors)
+}
+
+func TestParse_PromotedStruct(t *testing.T) {
+	iniContent := `
+host = localhost
+port = 8080
+username = admin
+`
+
+	config := PromotedConfig{}
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors != nil {
+		t.Fatalf("Failed to parse INI with promoted struct: %v", errors)
+	}
+
+	if config.Host != "localhost" {
+		t.Errorf("Expected host to be 'localhost', got '%s'", config.Host)
+	}
+	if config.Port != 8080 {
+		t.Errorf("Expected port to be 8080, got %d", config.Port)
+	}
+	if config.Username != "admin" {
+		t.Errorf("Expected username to be 'admin', got '%s'", config.Username)
+	}
+}
+
+func TestParse_InvalidTaggedPromotedStruct(t *testing.T) {
+	iniContent := `
+[server]
+host = localhost
+port = 8080
+
+username = admin
+`
+
+	config := InvalidTaggedPromotedConfig{}
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors == nil || !strings.Contains(errors[0].Error(), "promoted struct 'PromotedStruct' should not have an ini tag") {
+		t.Fatalf("Expected error for ini tag on promoted struct, got %v", errors)
+	}
+}
+
+func TestParse_DuplicateFieldPromotedStruct(t *testing.T) {
+	iniContent := `
+host = localhost
+port = 8080
+username = admin
+`
+
+	config := DuplicateFieldPromotedConfig{}
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors == nil || !strings.Contains(errors[0].Error(), "duplicate tag name 'host'") {
+		t.Fatalf("Expected error for duplicate field name in promoted struct, got %v", errors)
+	}
+}
+
+func TestParse_DuplicateFieldPromotedStructFirst(t *testing.T) {
+	iniContent := `
+host = localhost
+port = 8080
+username = admin
+`
+
+	config := DuplicateFieldPromotedConfigFirst{}
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors == nil || !strings.Contains(errors[0].Error(), "duplicate tag name 'host'") {
+		t.Fatalf("Expected error for duplicate field name in promoted struct, got %v", errors)
+	}
+}
+
+func TestParse_MultiplePromotedStructs(t *testing.T) {
+	iniContent := `
+host = localhost
+port = 8080
+timeout = 30.5
+enabled = true
+username = admin
+`
+
+	config := MultiplePromotedConfig{}
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors != nil {
+		t.Fatalf("Failed to parse INI with multiple promoted structs: %v", errors)
+	}
+
+	if config.Host != "localhost" {
+		t.Errorf("Expected host to be 'localhost', got '%s'", config.Host)
+	}
+	if config.Port != 8080 {
+		t.Errorf("Expected port to be 8080, got %d", config.Port)
+	}
+	if config.Timeout != 30.5 {
+		t.Errorf("Expected timeout to be 30.5, got %f", config.Timeout)
+	}
+	if !*config.Enabled {
+		t.Errorf("Expected enabled to be true, got %v", *config.Enabled)
+	}
+	if config.Username != "admin" {
+		t.Errorf("Expected username to be 'admin', got '%s'", config.Username)
+	}
+}
+
+func TestParse_PromotedStructNotFirst(t *testing.T) {
+	iniContent := `
+host = localhost
+port = 8080
+username = admin
+`
+
+	config := PromotedNotFirstConfig{}
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors != nil {
+		t.Fatalf("Failed to parse INI with promoted struct not being the first field: %v", errors)
+	}
+
+	if config.Host != "localhost" {
+		t.Errorf("Expected host to be 'localhost', got '%s'", config.Host)
+	}
+	if config.Port != 8080 {
+		t.Errorf("Expected port to be 8080, got %d", config.Port)
+	}
+	if config.Username != "admin" {
+		t.Errorf("Expected username to be 'admin', got '%s'", config.Username)
+	}
+}
+
+func TestParse_InvalidPromotedStruct(t *testing.T) {
+	iniContent := `
+host = localhost
+port = 8080
+username = admin
+`
+
+	config := InvalidPromotedConfig{}
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors == nil || !strings.Contains(errors[0].Error(), "duplicate tag name 'host'") {
+		t.Fatalf("Expected error for duplicate tag name in promoted struct, got %v", errors)
+	}
 }

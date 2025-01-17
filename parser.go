@@ -44,7 +44,24 @@ func getFieldMap(t reflect.Type) (map[string]reflect.StructField, error) {
 		if _, exists := fieldMap[tagName]; exists {
 			return nil, fmt.Errorf("duplicate tag name '%s' in struct %s", tagName, t.Name())
 		}
-		fieldMap[tagName] = field
+
+		if field.Anonymous {
+			if field.Tag.Get("ini") != "" {
+				return nil, fmt.Errorf("promoted struct '%s' should not have an ini tag", field.Name)
+			}
+			embeddedFieldMap, err := getFieldMap(field.Type)
+			if err != nil {
+				return nil, err
+			}
+			for k, v := range embeddedFieldMap {
+				if _, exists := fieldMap[k]; exists {
+					return nil, fmt.Errorf("duplicate tag name '%s' in struct %s", k, t.Name())
+				}
+				fieldMap[k] = v
+			}
+		} else {
+			fieldMap[tagName] = field
+		}
 	}
 	fieldCache.Store(t, fieldMap)
 	return fieldMap, nil
