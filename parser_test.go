@@ -1482,3 +1482,13 @@ app_name = MyApp
 		t.Fatalf("Expected error for maximum include depth exceeded, got %v", errors)
 	}
 }
+
+func TestParse_InvalidUTF8(t *testing.T) {
+	iniContent := "app_name = MyApp\x80"
+
+	config := Config{}
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors == nil || !strings.Contains(errors[0].Error(), "invalid UTF-8 encoding") {
+		t.Fatalf("Expected error for invalid UTF-8 encoding, got %v", errors)
+	}
+}

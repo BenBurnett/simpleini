@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"unicode"
+	"unicode/utf8"
 )
 
 // Cache for struct field mappings
@@ -292,6 +293,14 @@ func handleIncludeDirective(line, basePath string, config interface{}, delimiter
 	return nil, false
 }
 
+// ensureValidUTF8 checks if the input string is valid UTF-8.
+func ensureValidUTF8(input string) (string, error) {
+	if !utf8.ValidString(input) {
+		return "", fmt.Errorf("invalid UTF-8 encoding")
+	}
+	return input, nil
+}
+
 // parseReader parses the INI content from an io.Reader with support for include directives.
 func parseReader(reader io.Reader, config interface{}, delimiter string, includedFiles map[string]bool, depth int, basePath string) []error {
 	var errors []error
@@ -310,6 +319,13 @@ func parseReader(reader io.Reader, config interface{}, delimiter string, include
 	for scanner.Scan() {
 		lineNumber++
 		line := scanner.Text()
+
+		// Ensure the line is valid UTF-8
+		line, err := ensureValidUTF8(line)
+		if err != nil {
+			errors = append(errors, fmt.Errorf("error at line %d: %w", lineNumber, err))
+			continue
+		}
 
 		// Handle include directive
 		if includeErrors, handled := handleIncludeDirective(line, basePath, config, delimiter, includedFiles, depth); handled {
