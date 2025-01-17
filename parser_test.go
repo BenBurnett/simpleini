@@ -1,6 +1,7 @@
 package simpleini
 
 import (
+	"fmt"
 	"net"
 	"os"
 	"reflect"
@@ -1272,5 +1273,212 @@ description = Server at ${HOST}:${PORT} with user ${USERNAME}
 	expectedDescription := "Server at localhost:8080 with user admin"
 	if config.Server.Description != expectedDescription {
 		t.Errorf("Expected server description to be '%s', got '%s'", expectedDescription, config.Server.Description)
+	}
+}
+
+func TestParse_IncludeDirective(t *testing.T) {
+	includeIniContent := `
+[server]
+host = localhost
+port = 8080
+`
+
+	// Create the include file first
+	includeIniFile, err := os.CreateTemp("", "include_*.ini")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer os.Remove(includeIniFile.Name())
+	if _, err := includeIniFile.WriteString(includeIniContent); err != nil {
+		t.Fatalf("Failed to write to temp file: %v", err)
+	}
+	includeIniFile.Close()
+
+	// Substitute the include file name into the main content
+	mainIniContent := fmt.Sprintf(`
+!include %s
+
+app_name = MyApp
+version = 1.0.0
+`, includeIniFile.Name())
+
+	// Create the main file
+	mainIniFile, err := os.CreateTemp("", "main_*.ini")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer os.Remove(mainIniFile.Name())
+	if _, err := mainIniFile.WriteString(mainIniContent); err != nil {
+		t.Fatalf("Failed to write to temp file: %v", err)
+	}
+	mainIniFile.Close()
+
+	config := Config{}
+	errors := parseFile(mainIniFile.Name(), &config, "=", make(map[string]bool), 0)
+	if errors != nil {
+		t.Fatalf("Failed to parse INI with include directive: %v", errors)
+	}
+
+	if config.AppName != "MyApp" {
+		t.Errorf("Expected app_name to be 'MyApp', got '%s'", config.AppName)
+	}
+	if *config.Version != "1.0.0" {
+		t.Errorf("Expected version to be '1.0.0', got '%s'", *config.Version)
+	}
+	if config.Server.Host != "localhost" {
+		t.Errorf("Expected server host to be 'localhost', got '%s'", config.Server.Host)
+	}
+	if config.Server.Port != 8080 {
+		t.Errorf("Expected server port to be 8080, got %d", config.Server.Port)
+	}
+}
+
+func TestParse_CircularInclude(t *testing.T) {
+	// Create the main file first
+	mainIniFile, err := os.CreateTemp("", "main_*.ini")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer os.Remove(mainIniFile.Name())
+
+	// Create the include file
+	includeIniFile, err := os.CreateTemp("", "include_*.ini")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer os.Remove(includeIniFile.Name())
+
+	// Write the include file content
+	includeIniContent := fmt.Sprintf(`
+!include %s
+`, mainIniFile.Name())
+	if _, err := includeIniFile.WriteString(includeIniContent); err != nil {
+		t.Fatalf("Failed to write to temp file: %v", err)
+	}
+	includeIniFile.Close()
+
+	// Write the main file content
+	mainIniContent := fmt.Sprintf(`
+!include %s
+
+app_name = MyApp
+`, includeIniFile.Name())
+	if _, err := mainIniFile.WriteString(mainIniContent); err != nil {
+		t.Fatalf("Failed to write to temp file: %v", err)
+	}
+	mainIniFile.Close()
+
+	config := Config{}
+	errors := parseFile(mainIniFile.Name(), &config, "=", make(map[string]bool), 0)
+	if errors == nil || !strings.Contains(errors[0].Error(), "circular include detected") {
+		t.Fatalf("Expected error for circular include, got %v", errors)
+	}
+}
+
+func TestParse_FileNotFound(t *testing.T) {
+	mainIniContent := `
+!include non_existent.ini
+
+app_name = MyApp
+`
+
+	// Create the main file
+	mainIniFile, err := os.CreateTemp("", "main_*.ini")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer os.Remove(mainIniFile.Name())
+	if _, err := mainIniFile.WriteString(mainIniContent); err != nil {
+		t.Fatalf("Failed to write to temp file: %v", err)
+	}
+	mainIniFile.Close()
+
+	config := Config{}
+	errors := parseFile(mainIniFile.Name(), &config, "=", make(map[string]bool), 0)
+	if errors == nil || !strings.Contains(errors[0].Error(), "failed to open file") {
+		t.Fatalf("Expected error for file not found, got %v", errors)
+	}
+}
+
+func TestParse_MaxIncludeDepth(t *testing.T) {
+	include11IniContent := `
+app_name = MyApp
+`
+
+	include10IniContent := `
+!include include11.ini
+`
+
+	include9IniContent := `
+!include include10.ini
+`
+
+	include8IniContent := `
+!include include9.ini
+`
+
+	include7IniContent := `
+!include include8.ini
+`
+
+	include6IniContent := `
+!include include7.ini
+`
+
+	include5IniContent := `
+!include include6.ini
+`
+
+	include4IniContent := `
+!include include5.ini
+`
+
+	include3IniContent := `
+!include include4.ini
+`
+
+	include2IniContent := `
+!include include3.ini
+`
+
+	include1IniContent := `
+!include include2.ini
+`
+
+	// Create the include files in reverse order
+	includeFiles := []string{
+		include11IniContent, include10IniContent, include9IniContent, include8IniContent,
+		include7IniContent, include6IniContent, include5IniContent, include4IniContent,
+		include3IniContent, include2IniContent, include1IniContent,
+	}
+
+	var includeFileNames []string
+	for i := len(includeFiles) - 1; i >= 0; i-- {
+		includeFile, err := os.CreateTemp("", fmt.Sprintf("include%d_*.ini", i+1))
+		if err != nil {
+			t.Fatalf("Failed to create temp file: %v", err)
+		}
+		defer os.Remove(includeFile.Name())
+		if _, err := includeFile.WriteString(includeFiles[i]); err != nil {
+			t.Fatalf("Failed to write to temp file: %v", err)
+		}
+		includeFile.Close()
+		includeFileNames = append([]string{includeFile.Name()}, includeFileNames...)
+	}
+
+	// Substitute the include file names into the content
+	for i := 0; i < len(includeFiles)-1; i++ {
+		content := fmt.Sprintf(`
+!include %s
+`, includeFileNames[i+1])
+		if err := os.WriteFile(includeFileNames[i], []byte(content), 0644); err != nil {
+			t.Fatalf("Failed to write to temp file: %v", err)
+		}
+	}
+
+	config := Config{}
+	errors := parseFile(includeFileNames[0], &config, "=", make(map[string]bool), 0)
+	if errors == nil || !strings.Contains(errors[0].Error(), "maximum include depth exceeded") {
+		t.Fatalf("Expected error for maximum include depth exceeded, got %v", errors)
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -46,13 +47,29 @@ func substituteEnvVars(value string) string {
 	})
 }
 
-// Parse parses the INI file content from an io.Reader and populates the config struct
-func Parse(reader io.Reader, config interface{}) []error {
-	return ParseWithDelimiter(reader, config, "=")
+// parseFile reads and parses an INI file with support for include directives
+func parseFile(filename string, config interface{}, delimiter string, includedFiles map[string]bool, depth int) []error {
+	if depth > 10 {
+		return []error{fmt.Errorf("maximum include depth exceeded")}
+	}
+
+	if includedFiles[filename] {
+		return []error{fmt.Errorf("circular include detected: %s", filename)}
+	}
+	includedFiles[filename] = true
+
+	file, err := os.Open(filename)
+	if err != nil {
+		return []error{fmt.Errorf("failed to open file: %w", err)}
+	}
+	defer file.Close()
+
+	basePath := filepath.Dir(filename)
+	return parseReader(file, config, delimiter, includedFiles, depth+1, basePath)
 }
 
-// ParseWithDelimiter parses the INI file content from an io.Reader with a custom delimiter and populates the config struct
-func ParseWithDelimiter(reader io.Reader, config interface{}, delimiter string) []error {
+// parseReader parses the INI content from an io.Reader with support for include directives
+func parseReader(reader io.Reader, config interface{}, delimiter string, includedFiles map[string]bool, depth int, basePath string) []error {
 	var errors []error
 
 	// Set default values for all fields
@@ -69,6 +86,19 @@ func ParseWithDelimiter(reader io.Reader, config interface{}, delimiter string) 
 	for scanner.Scan() {
 		lineNumber++
 		line := scanner.Text()
+
+		// Check for include directive
+		if strings.HasPrefix(line, "!include ") {
+			includeFile := strings.TrimSpace(line[len("!include "):])
+			if !filepath.IsAbs(includeFile) {
+				includeFile = filepath.Join(basePath, includeFile)
+			}
+			includeErrors := parseFile(includeFile, config, delimiter, includedFiles, depth)
+			if includeErrors != nil {
+				errors = append(errors, includeErrors...)
+			}
+			continue
+		}
 
 		// Check for multiline continuation
 		if strings.HasPrefix(line, "    ") || strings.HasPrefix(line, "\t") {
@@ -127,6 +157,16 @@ func ParseWithDelimiter(reader io.Reader, config interface{}, delimiter string) 
 	}
 
 	return nil
+}
+
+// Parse parses the INI file content from an io.Reader and populates the config struct
+func Parse(reader io.Reader, config interface{}) []error {
+	return parseReader(reader, config, "=", make(map[string]bool), 0, "")
+}
+
+// ParseWithDelimiter parses the INI file content from an io.Reader with a custom delimiter and populates the config struct
+func ParseWithDelimiter(reader io.Reader, config interface{}, delimiter string) []error {
+	return parseReader(reader, config, delimiter, make(map[string]bool), 0, "")
 }
 
 // initializePointer initializes a pointer if it is nil
