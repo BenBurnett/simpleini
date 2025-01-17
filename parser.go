@@ -93,6 +93,11 @@ func setFieldValue(fieldValue reflect.Value, value string) error {
 	// Initialize the pointer if necessary
 	fieldValue = initializePointer(fieldValue)
 
+	// Check if the field is unexported
+	if !fieldValue.CanSet() {
+		return fmt.Errorf("cannot set unexported field")
+	}
+
 	// Check if the field implements encoding.TextUnmarshaler, and if so, use it
 	if fieldValue.CanAddr() {
 		addr := fieldValue.Addr()

@@ -1520,3 +1520,27 @@ key = value
 		t.Fatalf("Expected error for invalid section name, got %v", errors)
 	}
 }
+
+type UnexportedFieldConfig struct {
+	AppName string `ini:"app_name"`
+	version string `ini:"version"`
+}
+
+func TestParse_UnexportedFields(t *testing.T) {
+	iniContent := `
+app_name = MyApp
+version = 1.0.0
+`
+
+	config := UnexportedFieldConfig{}
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors == nil {
+		t.Fatal("Expected error for unexported fields, got nil")
+	}
+	for _, err := range errors {
+		if strings.Contains(err.Error(), "cannot set unexported field") {
+			return
+		}
+	}
+	t.Fatalf("Expected error for unexported fields, got %v", errors)
+}
