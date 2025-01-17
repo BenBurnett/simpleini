@@ -664,8 +664,8 @@ func TestParse_MultilineString(t *testing.T) {
 	iniContent := `
 [server]
 description = This is a
-    multiline
-    description
+              multiline
+              description
 `
 
 	config := Config{}
@@ -683,7 +683,7 @@ func TestParse_MultilineInt(t *testing.T) {
 	iniContent := `
 [database]
 max_conns = 100
-    200
+            200
 `
 
 	config := Config{}
@@ -697,7 +697,7 @@ func TestParse_MultilineFloat(t *testing.T) {
 	iniContent := `
 [server]
 timeout = 30.5
-    40.5
+          40.5
 `
 
 	config := Config{}
@@ -711,7 +711,7 @@ func TestParse_MultilineBool(t *testing.T) {
 	iniContent := `
 [server]
 enabled = true
-    false
+          false
 `
 
 	config := Config{}
@@ -725,11 +725,11 @@ func TestParse_MultipleMultilineStrings(t *testing.T) {
 	iniContent := `
 [server]
 description = This is a
-    multiline
-    description
+              multiline
+              description
 notes = These are
-    additional
-    notes
+        additional
+        notes
 
 [database]
 host = db.local
@@ -764,8 +764,8 @@ func TestParse_MultilineFollowedByError(t *testing.T) {
 	iniContent := `
 [server]
 description = This is a
-    multiline
-    description
+              multiline
+              description
 invalid_field = value
 `
 
@@ -780,7 +780,7 @@ func TestParse_ErroneousMultilineFollowedByValidField(t *testing.T) {
 	iniContent := `
 [database]
 max_conns = 100
-    200
+            200
 invalid_field
 `
 
@@ -1024,8 +1024,8 @@ func TestParse_DefaultValuesWithPointerSection(t *testing.T) {
 func TestParse_CustomStringSlice(t *testing.T) {
 	iniContent := `
 values = value1
-    value2
-    value3
+         value2
+         value3
 `
 
 	config := CustomSliceConfig{}
@@ -1051,20 +1051,20 @@ type PrimitiveSliceConfig struct {
 func TestParse_PrimitiveSlices(t *testing.T) {
 	iniContent := `
 ints = 1
-    2
-    3
+       2
+       3
 uints = 4
-    5
-    6
+        5
+        6
 floats = 1.1
-    2.2
-    3.3
+         2.2
+         3.3
 bools = true
-    false
-    true
+        false
+        true
 strings = one
-    two
-    three
+          two
+          three
 `
 
 	config := PrimitiveSliceConfig{}
@@ -1107,11 +1107,11 @@ type CustomTypeSliceConfig struct {
 func TestParse_CustomTypeSlices(t *testing.T) {
 	iniContent := `
 ips = 192.168.1.1
-    10.0.0.1
-    172.16.0.1
+      10.0.0.1
+      172.16.0.1
 durations = 1h
-    30m
-    15s
+            30m
+            15s
 `
 
 	config := CustomTypeSliceConfig{}
@@ -1142,8 +1142,8 @@ durations = 1h
 func TestParse_InvalidPrimitiveSliceValues(t *testing.T) {
 	iniContent := `
 ints = 1
-    not_an_int
-    3
+       not_an_int
+       3
 `
 
 	config := PrimitiveSliceConfig{}
@@ -1156,8 +1156,8 @@ ints = 1
 func TestParse_InvalidCustomTypeSliceValues(t *testing.T) {
 	iniContent := `
 ips = 192.168.1.1
-    invalid_ip
-    172.16.0.1
+      invalid_ip
+      172.16.0.1
 `
 
 	config := CustomTypeSliceConfig{}
