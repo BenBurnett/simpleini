@@ -241,6 +241,26 @@ func processMultilineValue(config interface{}, section, key, value string, lineN
 	return nil
 }
 
+// isValidKey checks if the key contains only valid characters.
+func isValidKey(s string) bool {
+	for _, r := range s {
+		if !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '_' {
+			return false
+		}
+	}
+	return true
+}
+
+// isValidSection checks if the section contains only valid characters.
+func isValidSection(s string) bool {
+	for _, r := range s {
+		if !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '_' && r != '.' {
+			return false
+		}
+	}
+	return true
+}
+
 // processLine processes a single line from the INI file.
 func processLine(line string, config interface{}, currentSection *string, currentKey *string, currentValue *string, inMultiline *bool, lineNumber int) error {
 	// Check for multiline continuation
@@ -265,7 +285,11 @@ func processLine(line string, config interface{}, currentSection *string, curren
 
 	// Check if the line is a section header
 	if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
-		*currentSection = strings.ToLower(line[1 : len(line)-1])
+		section := strings.ToLower(line[1 : len(line)-1])
+		if !isValidSection(section) {
+			return fmt.Errorf("invalid section name at line %d: %s", lineNumber, section)
+		}
+		*currentSection = section
 	} else {
 		// Check if the line is a key-value pair
 		if !strings.Contains(line, delimiter) {
@@ -274,7 +298,11 @@ func processLine(line string, config interface{}, currentSection *string, curren
 
 		// Split the line into key and value
 		keyValue := strings.SplitN(line, delimiter, 2)
-		*currentKey = strings.ToLower(strings.TrimSpace(keyValue[0]))
+		key := strings.ToLower(strings.TrimSpace(keyValue[0]))
+		if !isValidKey(key) {
+			return fmt.Errorf("invalid key name at line %d: %s", lineNumber, key)
+		}
+		*currentKey = key
 		*currentValue = strings.TrimSpace(keyValue[1])
 		*currentValue = substituteEnvVars(*currentValue)
 

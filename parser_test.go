@@ -1494,3 +1494,29 @@ func TestParse_InvalidUTF8(t *testing.T) {
 		t.Fatalf("Expected error for invalid UTF-8 encoding, got %v", errors)
 	}
 }
+
+func TestParse_InvalidKey(t *testing.T) {
+	iniContent := `
+[server]
+invalid-key = value
+`
+
+	config := Config{}
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors == nil || !strings.Contains(errors[0].Error(), "invalid key name at line 3") {
+		t.Fatalf("Expected error for invalid key name, got %v", errors)
+	}
+}
+
+func TestParse_InvalidSection(t *testing.T) {
+	iniContent := `
+[invalid-section]
+key = value
+`
+
+	config := Config{}
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors == nil || !strings.Contains(errors[0].Error(), "invalid section name at line 2") {
+		t.Fatalf("Expected error for invalid section name, got %v", errors)
+	}
+}

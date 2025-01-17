@@ -135,7 +135,7 @@ fmt.Println(config.AppVersion) // Output: 1.0.0
 
 ### Sections and Subsections
 
-Simple INI supports sections and subsections in the INI file. Sections are defined using square brackets, and subsections can be defined using dot notation.
+Simple INI supports sections and subsections in the INI file. Sections are defined using square brackets, and subsections can be defined using dot notation. Sections can contain alphanumeric characters, underscores, and dots, while keys can only contain alphanumeric characters and underscores.
 
 ```ini
 app_name = MyApp
