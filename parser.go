@@ -12,8 +12,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"unicode"
-	"unicode/utf8"
 )
 
 // Cache for struct field mappings
@@ -65,33 +63,6 @@ func getFieldMap(t reflect.Type) (map[string]reflect.StructField, error) {
 	}
 	fieldCache.Store(t, fieldMap)
 	return fieldMap, nil
-}
-
-// snakeToPascal converts a snake_case string to PascalCase.
-func snakeToPascal(s string) string {
-	var result strings.Builder
-	upperNext := true
-	for _, r := range s {
-		if r == '_' {
-			upperNext = true
-			continue
-		}
-
-		if upperNext {
-			result.WriteRune(unicode.ToUpper(r))
-			upperNext = false
-		} else {
-			result.WriteRune(r)
-		}
-	}
-	return result.String()
-}
-
-// substituteEnvVars replaces placeholders in the value with environment variable values.
-func substituteEnvVars(value string) string {
-	return os.Expand(value, func(key string) string {
-		return os.Getenv(key)
-	})
 }
 
 // initializePointer initializes a pointer if it is nil and has a value or a default value.
@@ -281,26 +252,6 @@ func processMultilineValue(config interface{}, section, key, value string, lineN
 	return nil
 }
 
-// isValidKey checks if the key contains only valid characters.
-func isValidKey(s string) bool {
-	for _, r := range s {
-		if !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '_' {
-			return false
-		}
-	}
-	return true
-}
-
-// isValidSection checks if the section contains only valid characters.
-func isValidSection(s string) bool {
-	for _, r := range s {
-		if !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '_' && r != '.' {
-			return false
-		}
-	}
-	return true
-}
-
 // processLine processes a single line from the INI file.
 func processLine(line string, config interface{}, currentSection *string, currentKey *string, currentValue *string, inMultiline *bool, lineNumber int) error {
 	// Check for multiline continuation
@@ -366,14 +317,6 @@ func handleIncludeDirective(line, basePath string, config interface{}, includedF
 		return includeErrors, true
 	}
 	return nil, false
-}
-
-// ensureValidUTF8 checks if the input string is valid UTF-8.
-func ensureValidUTF8(input string) (string, error) {
-	if !utf8.ValidString(input) {
-		return "", fmt.Errorf("invalid UTF-8 encoding")
-	}
-	return input, nil
 }
 
 // parseReader parses the INI content from an io.Reader with support for include directives.
