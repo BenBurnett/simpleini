@@ -94,10 +94,10 @@ func substituteEnvVars(value string) string {
 	})
 }
 
-// initializePointer initializes a pointer if it is nil and returns the dereferenced value.
-func initializePointer(v reflect.Value) reflect.Value {
+// initializePointer initializes a pointer if it is nil and has a value or a default value.
+func initializePointer(v reflect.Value, hasValue bool) reflect.Value {
 	if v.Kind() == reflect.Ptr {
-		if v.IsNil() {
+		if v.IsNil() && hasValue {
 			v.Set(reflect.New(v.Type().Elem()))
 		}
 		return v.Elem()
@@ -108,7 +108,7 @@ func initializePointer(v reflect.Value) reflect.Value {
 // setFieldValue sets the value of a field based on its type.
 func setFieldValue(fieldValue reflect.Value, value string) error {
 	// Initialize the pointer if necessary
-	fieldValue = initializePointer(fieldValue)
+	fieldValue = initializePointer(fieldValue, value != "")
 
 	// Check if the field is unexported
 	if !fieldValue.CanSet() {
@@ -175,9 +175,10 @@ func setDefaultValues(v reflect.Value) error {
 	}
 
 	for _, field := range fieldMap {
-		fieldValue := initializePointer(v.FieldByName(field.Name))
+		fieldValue := v.FieldByName(field.Name)
 		defaultValue := field.Tag.Get("default")
 		if defaultValue != "" {
+			fieldValue = initializePointer(fieldValue, true)
 			if err := setFieldValue(fieldValue, defaultValue); err != nil {
 				return err
 			}
@@ -187,6 +188,21 @@ func setDefaultValues(v reflect.Value) error {
 		if fieldValue.Kind() == reflect.Struct {
 			if err := setDefaultValues(fieldValue); err != nil {
 				return err
+			}
+		} else if fieldValue.Kind() == reflect.Ptr && fieldValue.Type().Elem().Kind() == reflect.Struct {
+			// Initialize pointer to struct if any field has a default value
+			embeddedFieldMap, err := getFieldMap(fieldValue.Type().Elem())
+			if err != nil {
+				return err
+			}
+			for _, embeddedField := range embeddedFieldMap {
+				if embeddedField.Tag.Get("default") != "" {
+					fieldValue = initializePointer(fieldValue, true)
+					if err := setDefaultValues(fieldValue); err != nil {
+						return err
+					}
+					break
+				}
 			}
 		}
 	}
@@ -209,7 +225,9 @@ func setStructValue(v reflect.Value, key, value string) error {
 		}
 	}
 
-	return setFieldValue(v.FieldByName(field.Name), value)
+	fieldValue := v.FieldByName(field.Name)
+	fieldValue = initializePointer(fieldValue, value != "")
+	return setFieldValue(fieldValue, value)
 }
 
 // setConfigValue sets the value of a field in the config struct.
@@ -242,7 +260,7 @@ func setConfigValue(config interface{}, section, key, value string) error {
 		}
 
 		// Initialize the pointer if necessary
-		field = initializePointer(field)
+		field = initializePointer(field, true)
 
 		// Check if the field is a struct
 		if field.Kind() != reflect.Struct {

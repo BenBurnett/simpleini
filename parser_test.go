@@ -1074,6 +1074,28 @@ func TestParse_DefaultValuesWithPointerSection(t *testing.T) {
 	}
 }
 
+type NoDefaultSectionConfig struct {
+	Server *struct {
+		Host    string `ini:"host"`
+		Port    uint   `ini:"port"`
+		Enabled *bool  `ini:"enabled"`
+	} `ini:"server"`
+}
+
+func TestParse_NoDefaultValuesWithPointerSection(t *testing.T) {
+	iniContent := ``
+
+	config := NoDefaultSectionConfig{}
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors != nil {
+		t.Fatalf("Failed to parse INI with default values in pointer section: %v", errors)
+	}
+
+	if config.Server != nil {
+		t.Fatalf("Expected server section to be nil, got %v", config.Server)
+	}
+}
+
 func TestParse_CustomStringSlice(t *testing.T) {
 	iniContent := `
 values = value1
@@ -1731,5 +1753,40 @@ username = admin
 	errors := Parse(strings.NewReader(iniContent), &config)
 	if errors == nil || !strings.Contains(errors[0].Error(), "duplicate tag name 'host'") {
 		t.Fatalf("Expected error for duplicate tag name in promoted struct, got %v", errors)
+	}
+}
+
+type DuplicateTagPointerConfig struct {
+	Server *struct {
+		Host string `ini:"host"`
+		Port string `ini:"host"`
+	} `ini:"server"`
+}
+
+func TestParse_DuplicateTagPointer(t *testing.T) {
+	iniContent := `
+[server]
+host = localhost
+port = 8080
+`
+
+	config := DuplicateTagPointerConfig{}
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors == nil || !strings.Contains(errors[0].Error(), "duplicate tag name 'host'") {
+		t.Fatalf("Expected error for duplicate tag name in pointer section, got %v", errors)
+	}
+}
+
+type InvalidDefaultPointerConfig struct {
+	Server *struct {
+		Port uint `ini:"port" default:"invalid_uint"`
+	} `ini:"server"`
+}
+
+func TestParse_InvalidDefaultPointer(t *testing.T) {
+	config := InvalidDefaultPointerConfig{}
+	errors := Parse(strings.NewReader(""), &config)
+	if errors == nil || !strings.Contains(errors[0].Error(), "invalid value for field type uint") {
+		t.Fatalf("Expected error for invalid default uint value in pointer section, got %v", errors)
 	}
 }
