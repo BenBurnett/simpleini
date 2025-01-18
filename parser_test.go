@@ -1790,3 +1790,32 @@ func TestParse_InvalidDefaultPointer(t *testing.T) {
 		t.Fatalf("Expected error for invalid default uint value in pointer section, got %v", errors)
 	}
 }
+
+func TestParse_PointerFieldsWithoutValues(t *testing.T) {
+	iniContent := `
+app_name = MyApp
+`
+
+	type PointerFieldsConfig struct {
+		AppName string   `ini:"app_name"`
+		Version *string  `ini:"version"`
+		Enabled *bool    `ini:"enabled"`
+		Timeout *float64 `ini:"timeout"`
+	}
+
+	config := PointerFieldsConfig{}
+	errors := Parse(strings.NewReader(iniContent), &config)
+	if errors != nil {
+		t.Fatalf("Failed to parse INI: %v", errors)
+	}
+
+	if config.Version != nil {
+		t.Errorf("Expected version to be nil, got '%v'", *config.Version)
+	}
+	if config.Enabled != nil {
+		t.Errorf("Expected enabled to be nil, got '%v'", *config.Enabled)
+	}
+	if config.Timeout != nil {
+		t.Errorf("Expected timeout to be nil, got '%v'", *config.Timeout)
+	}
+}
