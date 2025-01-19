@@ -396,5 +396,6 @@ func parseFile(filename string, config interface{}, includedFiles map[string]boo
 
 // Parse parses the INI file content from an io.Reader and populates the config struct.
 func Parse(reader io.Reader, config interface{}) []error {
+	fieldCache = sync.Map{} // Clear the field cache
 	return parseReader(reader, config, make(map[string]bool), 0, "")
 }

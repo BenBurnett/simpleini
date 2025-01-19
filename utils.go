@@ -3,6 +3,7 @@ package simpleini
 import (
 	"fmt"
 	"os"
+	"reflect"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -21,6 +22,22 @@ func snakeToPascal(s string) string {
 		if upperNext {
 			result.WriteRune(unicode.ToUpper(r))
 			upperNext = false
+		} else {
+			result.WriteRune(r)
+		}
+	}
+	return result.String()
+}
+
+// pascalToSnake converts a PascalCase string to snake_case.
+func pascalToSnake(s string) string {
+	var result strings.Builder
+	for i, r := range s {
+		if unicode.IsUpper(r) {
+			if i > 0 {
+				result.WriteRune('_')
+			}
+			result.WriteRune(unicode.ToLower(r))
 		} else {
 			result.WriteRune(r)
 		}
@@ -67,4 +84,16 @@ func ensureValidUTF8(input string) (string, error) {
 		return "", fmt.Errorf("invalid UTF-8 encoding")
 	}
 	return input, nil
+}
+
+// isSupportedType checks if the given kind is a supported type.
+func isSupportedType(kind reflect.Kind) bool {
+	switch kind {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+		reflect.Bool, reflect.Float32, reflect.Float64, reflect.String:
+		return true
+	default:
+		return false
+	}
 }

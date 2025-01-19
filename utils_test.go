@@ -2,6 +2,7 @@ package simpleini
 
 import (
 	"os"
+	"reflect"
 	"testing"
 )
 
@@ -20,6 +21,25 @@ func TestSnakeToPascal(t *testing.T) {
 		result := snakeToPascal(test.input)
 		if result != test.expected {
 			t.Errorf("snakeToPascal(%q) = %q; expected %q", test.input, result, test.expected)
+		}
+	}
+}
+
+func TestPascalToSnake(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"PascalCase", "pascal_case"},
+		{"AnotherExample", "another_example"},
+		{"Single", "single"},
+		{"", ""},
+	}
+
+	for _, test := range tests {
+		result := pascalToSnake(test.input)
+		if result != test.expected {
+			t.Errorf("expected %q, got %q", test.expected, result)
 		}
 	}
 }
@@ -104,6 +124,40 @@ func TestEnsureValidUTF8(t *testing.T) {
 		}
 		if result != test.expected {
 			t.Errorf("ensureValidUTF8(%q) = %q; expected %q", test.input, result, test.expected)
+		}
+	}
+}
+
+func TestIsSupportedType(t *testing.T) {
+	tests := []struct {
+		kind     reflect.Kind
+		expected bool
+	}{
+		{reflect.Int, true},
+		{reflect.Int8, true},
+		{reflect.Int16, true},
+		{reflect.Int32, true},
+		{reflect.Int64, true},
+		{reflect.Uint, true},
+		{reflect.Uint8, true},
+		{reflect.Uint16, true},
+		{reflect.Uint32, true},
+		{reflect.Uint64, true},
+		{reflect.Bool, true},
+		{reflect.Float32, true},
+		{reflect.Float64, true},
+		{reflect.String, true},
+		{reflect.Struct, false},
+		{reflect.Slice, false},
+		{reflect.Map, false},
+		{reflect.Chan, false},
+		{reflect.Func, false},
+	}
+
+	for _, test := range tests {
+		result := isSupportedType(test.kind)
+		if result != test.expected {
+			t.Errorf("isSupportedType(%v) = %v; expected %v", test.kind, result, test.expected)
 		}
 	}
 }
